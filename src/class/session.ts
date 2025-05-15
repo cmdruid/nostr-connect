@@ -13,7 +13,6 @@ import {
   PublishedEvent,
   SessionToken,
   RequestMessage,
-  SignedMessage,
   SessionEventMap
 } from '@/types/index.js'
 
@@ -26,6 +25,8 @@ export class SessionManager extends EventEmitter <SessionEventMap> {
   constructor (client : NostrClient) {
     super()
     this._client = client
+
+    this.client.on('request', this._handler.bind(this))
   }
 
   get client() : NostrClient {
@@ -43,23 +44,14 @@ export class SessionManager extends EventEmitter <SessionEventMap> {
     }
   }
 
-  _get_session (msg : SignedMessage) : SessionToken | null {
-    return this.session.active.get(msg.env.pubkey) ?? null
-  }
-
-  _handler (msg : SignedMessage) : void {
-
-    if (msg.type !== 'request') {
-      this.emit('reject', 'not a request', msg)
-      return
-    }
+  _handler (msg : RequestMessage) : void {
 
     if (msg.method === CALL_METHOD.CONNECT) {
       this._register(msg)
       return
     }
 
-    const session = this._get_session(msg)
+    const session = this.session.active.get(msg.env.pubkey)
 
     if (!session) {
       this.emit('reject', 'no session found', msg)
@@ -76,7 +68,7 @@ export class SessionManager extends EventEmitter <SessionEventMap> {
     if (!secret) return
     const token  = this.session.pending.get(secret)
     if (!token) return
-    const msg  = create_message({ id: req.id, result: token.secret, type: 'response' })
+    const msg  = create_message({ id: req.id, result: token.secret })
     const res  = await this.client.send(msg, pubkey)
     if (!res.ok) return
     this.session.active.set(pubkey, { ...token, pubkey })
@@ -97,7 +89,7 @@ export class SessionManager extends EventEmitter <SessionEventMap> {
   async connect (connect_str : string) : Promise<PublishedEvent> {
     const id    = gen_message_id()
     const token = decode_connect_url(connect_str)
-    const msg   = create_message({ id, result: token.secret, type: 'response' })
+    const msg   = create_message({ id, result: token.secret })
     const res   = await this.client.send(msg, token.pubkey)
     if (!res.ok) return res
     this.session.active.set(token.pubkey, token)

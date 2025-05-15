@@ -1,8 +1,11 @@
-import type { NostrNode } from '@cmdcode/nostr-p2p'
-import type { Test }      from 'tape'
+import type { NostrClient } from '@cmdcode/nip46-sdk'
+import type { Test }        from 'tape'
 
 export interface TestContext {
-  nodes  : Map<string, NostrNode>
+  clients : {
+    local  : NostrClient
+    remote : NostrClient
+  }
   relays : string[]
   tape   : Test
 }

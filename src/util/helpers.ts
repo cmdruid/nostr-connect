@@ -6,3 +6,15 @@ export function parse_error (err : unknown) : string {
   if (typeof err === 'string') return err
   return String(err)
 }
+
+export function create_timeout <T> (
+  promise  : Promise<T>,
+  timeout  : number
+) : Promise<T> {
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => reject('timeout'), timeout)
+    const res   = await promise
+    clearTimeout(timer)
+    resolve(res)
+  })
+}

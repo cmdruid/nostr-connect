@@ -1,36 +1,16 @@
-import { Buff }      from "@cmdcode/buff"
-import { NostrNode } from '@cmdcode/nip46-sdk'
+import { Buff } from '@cmdcode/buff'
 
-import type { NodeConfig } from '@cmdcode/nip46-sdk'
+import { NostrClient, SimpleSigner } from '@cmdcode/nip46-sdk'
 
-export function generate_nodes (
-  names   : string[],
+import type { ClientConfig } from '@cmdcode/nip46-sdk'
+
+export async function create_client (
+  name    : string,
   relays  : string[],
-  options : Partial<NodeConfig> = {}
-) : Map<string, NostrNode> {
-  return new Map(names.map(name => {
-    const seckey = Buff.str(name).digest.hex
-    const relay  = new NostrNode(relays, seckey, options)
-    return [ name, relay ]
-  }))
-}
-
-export function get_node (
-  nodes : Map<string, NostrNode>, 
-  name  : string
-) : NostrNode {
-  const node = nodes.get(name)
-  if (node === undefined) {
-    throw new Error(`Node ${name} not found`)
-  }
-  return node
-}
-
-export function get_peers (
-  nodes : Map<string, NostrNode>,
-  name  : string
-) : string[] {
-  return Array.from(nodes.entries())
-    .filter(([ key ]) => key !== name)
-    .map(([ _, node ]) => node.pubkey)
+  options : Partial<ClientConfig> = {}
+) : Promise<NostrClient> {
+  const seckey = Buff.str(name).digest.hex
+  const signer = new SimpleSigner(seckey)
+  const pubkey = await signer.get_pubkey()
+  return new NostrClient(pubkey, relays, signer, options)
 }

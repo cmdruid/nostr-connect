@@ -1,38 +1,38 @@
 import { SignedEvent } from './event.js'
 
-export type SignedMessage   = RequestMessage  | ResponseMessage  | RejectMessage
-export type MessageTemplate = RequestTemplate | ResponseTemplate | RejectTemplate
-export type MessageType     = 'request' | 'response' | 'reject'
+export type MessageTemplate = RequestTemplate | AcceptTemplate | RejectTemplate
+export type ResponseMessage = AcceptMessage   | RejectMessage
+export type SignedMessage   = RequestMessage  | ResponseMessage
 
 export interface BaseMessage {
-  id   : string
-  type : MessageType
+  id : string
 }
 
 export interface RequestTemplate extends BaseMessage {
-  method : string
-  params : string[]
-  type   : 'request'
+  method  : string
+  params? : string[]
 }
 
-export interface ResponseTemplate extends BaseMessage {
+export interface AcceptTemplate extends BaseMessage {
   result : string
-  type   : 'response'
 }
 
 export interface RejectTemplate extends BaseMessage {
   error : string
-  type  : 'reject'
 }
 
 export interface RequestMessage extends RequestTemplate {
-  env : SignedEvent
+  env    : SignedEvent
+  params : string[]
+  type   : 'request'
 }
 
-export interface ResponseMessage extends ResponseTemplate {
-  env : SignedEvent
+export interface AcceptMessage extends AcceptTemplate {
+  env  : SignedEvent
+  type : 'accept'
 }
 
 export interface RejectMessage extends RejectTemplate {
-  env : SignedEvent
+  env  : SignedEvent
+  type : 'reject'
 }

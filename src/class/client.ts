@@ -1,7 +1,9 @@
 import { SimplePool }       from 'nostr-tools'
 import { EventEmitter }     from './emitter.js'
 import { gen_message_id }   from '@/lib/util.js'
-import { now, parse_error } from '@/util/index.js'
+import { verify_relays }    from '@/lib/validate.js'
+
+import { Assert, now, parse_error } from '@/util/index.js'
 
 import {
   SubCloser,
@@ -14,7 +16,7 @@ import {
   parse_message
 } from '@/lib/message.js'
 
-import { verify_relays } from '@/lib/validate.js'
+
 
 import type {
   EventFilter,
@@ -25,7 +27,10 @@ import type {
   ClientInboxMap,
   ClientEventMap,
   PublishedEvent,
-  MessageTemplate
+  MessageTemplate,
+  RequestTemplate,
+  ResponseMessage,
+  RequestMessage
 } from '@/types/index.js'
 
 /**
@@ -54,9 +59,9 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
 
   // Message routing system
   private readonly _inbox : ClientInboxMap = {
-    id     : new EventEmitter(), // Route by message ID
-    method : new EventEmitter(), // General event handling
-    pubkey : new EventEmitter()  // Route by peer pubkey
+    author  : new EventEmitter(), // Route by sender pubkey.
+    request : new EventEmitter(), // Route by message type.
+    response: new EventEmitter()  // Route by message type.
   }
 
   private _filter : EventFilter
@@ -117,28 +122,40 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   }
 
   private async _handler (event : SignedEvent) : Promise<void> {
+    if (event.pubkey === this.pubkey) return
+
+    this.emit('event', event)
+
     try {
       // Decrypt and parse the incoming message
       const payload = await decrypt_envelope(event, this._signer)
       const message = parse_message(payload, event)
+      const type    = message.type
 
-      this.emit('message', message)
-
-      switch (message.type) {
-        case 'request':
-          this.inbox.method.emit(message.method, message)
-          this.emit('request', message)
-          break
-        case 'response':
-          this.emit('response', message)
-          break
-        default:
-          this.emit('error', event.id, 'unknown message type')
+      // If the message is a request,
+      if (type === 'request') {
+        // If the message is a ping,
+        if (message.method === 'ping') {
+          // Send a pong response.
+          this._pong(message)
+        } else {
+          // Otherwise, emit the message to the request inbox.
+          this.inbox.request.emit(message.method, message)
+        }
       }
-
-      this.inbox.id.emit(message.id, message)
-      this.inbox.pubkey.emit(message.env.pubkey, message)
+      // If the message is an accept or reject,
+      else if (type === 'accept' || type === 'reject') {
+        // Emit the message to the response inbox.
+        this.inbox.response.emit(message.id, message)
+      }
+      // Emit the message to the author inbox.
+      this.inbox.author.emit(message.env.pubkey, message)
+      // Emit the message to client emitter.
+      this.emit('message', message)
     } catch (err) {
+      // Emit the error to the client emitter.
+      this.emit('error', err)
+      // Emit the bounced event to the client emitter.
       this.emit('bounced', event.id, parse_error(err))
     }
   }
@@ -146,6 +163,12 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   private _init() : void {
     this._ready = true
     this.emit('ready', this)
+  }
+
+  private _pong (message : RequestMessage) : void {
+    Assert.ok(message.method === 'ping', 'invalid ping message')
+    const template = { result: 'pong', id: message.id }
+    this.send(template, message.env.pubkey)
   }
 
   /**
@@ -163,8 +186,8 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
 
   private _subscribe() : void {
     const params : SubscribeManyParams = {
-      onevent : this._handler,
-      oneose  : this._init
+      onevent : this._handler.bind(this),
+      oneose  : this._init.bind(this)
     }
     this._sub = this._pool.subscribe(this.relays, this.filter, params)
   }
@@ -200,6 +223,42 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     this.emit('close', this)
   }
 
+  async create_event (
+    message   : MessageTemplate,
+    recipient : string
+  ) : Promise<SignedEvent> {
+    message.id   ??= gen_message_id()
+    const config   = { kind : this.config.kind, tags : [] }
+    const payload  = JSON.stringify(message)
+    return create_envelope(config, payload, recipient, this._signer)
+  }
+
+  async ping (recipient : string) : Promise<boolean> {
+    const msg_id   = gen_message_id()
+    const template = { method: 'ping', id: msg_id }
+    return this.request(template, recipient)
+      .then(res => res.type === 'accept')
+      .catch(_ => false)
+  }
+
+  async request (
+    message   : RequestTemplate,
+    recipient : string
+  ) : Promise<ResponseMessage> {
+    if (!message.id) throw new Error('message id is required')
+    const event   = await this.create_event(message, recipient)
+    const timeout = this.config.req_timeout
+    const receipt = new Promise<ResponseMessage>((resolve, reject) => {
+      const timer = setTimeout(() => reject('timeout'), timeout)
+      this.inbox.response.within(message.id, (msg) => {
+        clearTimeout(timer)
+        resolve(msg)
+      }, timeout)
+    })
+    this._publish(event)
+    return receipt
+  }
+
   /**
    * Publishes a message to the Nostr network.
    * @param message   Message data to publish
@@ -210,11 +269,8 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     message   : MessageTemplate,
     recipient : string
   ) : Promise<PublishedEvent> {
-    message.id   ??= gen_message_id()
-    const config   = { kind : this.config.kind, tags : [] }
-    const payload  = JSON.stringify(message)
-    const event    = await create_envelope(config, payload, recipient, this._signer)
-    const res      = await this._publish(event)
+    const event = await this.create_event(message, recipient)
+    const res   = await this._publish(event)
     return { ...res, event }
   }
 }
