@@ -1,0 +1,223 @@
+/* node.css - Styles for node components */
+/* Generated: March 06, 2025 */
+
+@import 'global.css';
+
+/* ========================================================================= */
+/* Console Component */
+.console-container {
+  width: 100%; /* Occupy full width of parent (.tab-panel) */
+  margin: 0; /* Removed auto margin, parent centers */
+  margin-top: 1rem;
+  box-sizing: border-box;
+}
+
+.console-output {
+  background: rgba(15, 25, 45, 0.7);
+  border: 1px solid rgba(100, 140, 210, 0.3);
+  border-radius: 4px;
+  padding: 15px;
+  margin: 15px 0; /* Keep vertical margin */
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.console-entry {
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.console-timestamp {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.console-message {
+  flex: 1;
+  word-break: break-word;
+  overflow-wrap: break-word; /* Added for better wrapping */
+}
+
+.console-info {
+  color: #4a90e2;
+}
+
+.console-warning {
+  color: #fdcb6e;
+}
+
+.console-error {
+  color: #e74c3c;
+}
+
+.console-success {
+  color: #00b894;
+}
+
+.console-empty {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+}
+
+.console-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+}
+
+/* Dashboard Component */
+.dashboard-container {
+  width: 100%; /* Occupy full width of parent (.tab-panel) */
+  margin: 0; /* Removed auto margin, parent centers */
+  padding: 0; /* Remove padding, handled by .tab-panel or specific elements within */
+  box-sizing: border-box;
+}
+
+.dashboard-container pre {
+  white-space: pre-wrap; /* Allow wrapping for pre tags */
+  word-break: break-all;   /* Break long words if necessary */
+  overflow-wrap: break-word;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.dashboard-card {
+  background: rgba(15, 25, 45, 0.7);
+  border: 1px solid rgba(100, 140, 210, 0.3);
+  border-radius: 4px;
+  padding: 20px;
+}
+
+.dashboard-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.dashboard-card-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #e6e6e6;
+}
+
+.dashboard-card-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #4a90e2;
+  margin: 10px 0;
+}
+
+.dashboard-card-description {
+  font-size: 13px;
+  color: #aaa;
+  margin-top: 5px;
+}
+
+/* Status Indicators */
+.status-indicator {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-indicator.online {
+  background-color: #4caf50;
+  color: white;
+}
+
+.status-indicator.offline {
+  background-color: #f44336;
+  color: white;
+}
+
+.status-indicator.checking {
+  background-color: #B8860B;  /* DarkGoldenrod - a more muted, darker yellow */
+  color: white;
+}
+
+.status-indicator.unknown {
+  background-color: #9e9e9e;
+  color: white;
+}
+
+.pubkey-cell {
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* Add media query for smaller screens */
+@media (max-width: 720px) {
+  .console-controls {
+    justify-content: center; /* Center the button */
+  }
+
+  .console-controls .button,
+  .dashboard-container .button {
+    width: 100%; /* Make buttons full-width */
+    margin-top: 10px;
+  }
+
+  .console-entry {
+    flex-direction: column; /* Stack timestamp and message */
+    gap: 4px;
+  }
+
+  .console-timestamp {
+    font-size: 0.8em;
+  }
+}
+
+/* Add comfortable spacing between dashboard sections in the dashboard tab */
+.tab-panel > .dashboard-container,
+.tab-panel > .console-container {
+  margin-bottom: 2rem;
+}
+
+/* Remove margin from the last dashboard section */
+.tab-panel > .dashboard-container:last-child,
+.tab-panel > .console-container:last-child {
+  margin-bottom: 0;
+}
+
+.sessions-container {
+  width: 100%;
+  background: rgba(15, 25, 45, 0.7);
+  border: 1px solid rgba(100, 140, 210, 0.3);
+  border-radius: 4px;
+  padding: 1.5rem 1rem;
+  margin: 0 0 2rem 0;
+  box-sizing: border-box;
+}
+
+.sessions-container h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.sessions-container h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #d8d8d8;
+  margin-bottom: 0.5rem;
+}
+
+.sessions-container button {
+  font-size: 0.95em;
+} 

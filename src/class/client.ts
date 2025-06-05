@@ -8,11 +8,14 @@ import { EVENT_KIND, REQ_METHOD }   from '@/const.js'
 import { Assert, now, parse_error } from '@/util/index.js'
 
 import {
-  create_accept_template,
   create_envelope,
+  decrypt_envelope
+} from '@/lib/event.js'
+
+import {
+  create_accept_template,
   create_reject_template,
   create_request_template,
-  decrypt_envelope,
   parse_message
 } from '@/lib/message.js'
 
@@ -42,7 +45,7 @@ const DEFAULT_CONFIG : () => ClientConfig = () => {
   }
 }
 
-export class NostrClient extends EventEmitter <ClientEventMap> {
+export class NIP46Client extends EventEmitter <ClientEventMap> {
   // Core node components
   private readonly _config   : ClientConfig
   private readonly _pool     : SimplePool
@@ -110,6 +113,10 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     return this._signer
   }
 
+  get session() : SessionManager {
+    return this._session
+  }
+
   private async _handler (event : SignedEvent) : Promise<void> {
     // Ignore events from the client itself.
     if (event.pubkey === this.pubkey) return
@@ -131,13 +138,13 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
         // If the message is a connection request,
         } else if (message.method === REQ_METHOD.CONNECT) {
           // Handle the connect message.
-          this._session.handler(message)
+          this._session.handle_connect(message)
+        } else if (message.method === REQ_METHOD.GET_PUBKEY) {
+          // Handle the get pubkey message.
+          this._session.handle_pubkey(message)
         } else {
-          // Fetch the session token from the active session map.
-          const token = this._session.active.get(message.env.pubkey)
-          // If no session exists, ignore the message.
-          if (!token) return
           // Emit the message to the request inbox.
+          this.emit('request', message)
           this.inbox.req.emit(message.method, message)
         }
       }
@@ -198,8 +205,12 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     const settled  = await Promise.allSettled(promises)
     // Parse the receipts.
     const receipts = parse_receipts(settled)
-    // Return the receipts along with the event.
-    return { ...receipts, event }
+    // Create the response.
+    const response = { ...receipts, event }
+    // Emit the event to the client emitter.
+    this.emit('publish', response)
+    // Return the response.
+    return response
   }
 
   private _subscribe() : void {
@@ -296,6 +307,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
         resolve(msg)
       }, timeout)
     })
+    console.log('sending request', template, recipient)
     // Send the request.
     this._send(template, recipient)
     // Return the promise to resolve the response.
@@ -316,6 +328,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   ) : Promise<PublishedEvent> {
     // Create the response template.
     const tmpl = create_accept_template({ id, result })
+    console.log('sending response', tmpl, pubkey)
     // Send the response.
     return this._send(tmpl, pubkey)
   }
@@ -334,6 +347,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   ) : Promise<PublishedEvent> {
     // Create the rejection template.
     const tmpl = create_reject_template({ id, error: reason })
+    console.log('sending rejection', tmpl, pubkey)
     // Send the rejection.
     return this._send(tmpl, pubkey)
   }

@@ -1,6 +1,6 @@
 
 import type { EventEmitter } from '@/class/emitter.js'
-import type { NostrClient }  from '@/class/client.js'
+import type { NIP46Client }  from '@/class/client.js'
 import type { SessionToken } from './session.js'
 
 import type {
@@ -33,14 +33,16 @@ export interface ClientInboxMap {
 
 export interface ClientEventMap extends Record<string, any> {
   'bounced'    : [ event_id : string, error : string ]
-  'closed'     : [ client: NostrClient ]
+  'closed'     : [ client: NIP46Client ]
   'debug'      : unknown[]
   'error'      : unknown[]
   'info'       : unknown[]
   'event'      : [ event: SignedEvent ]
-  'message'    : [ message: SignedMessage   ]
-  'ready'      : [ client: NostrClient ]
+  'message'    : [ message: SignedMessage ]
+  'ready'      : [ client: NIP46Client ]
   'subscribed' : [ sub_id : string ]
-  'activate'   : [ token: SessionToken ]
-  'register'   : [ token: SessionToken ]
+  'activated'  : [ token: SessionToken ]
+  'issued'     : [ token: SessionToken ]
+  'pending'    : [ token: SessionToken ]
+  'request'    : [ message: RequestMessage ]
 }

@@ -1,7 +1,7 @@
 import * as base  from '@/util/schema.js'
 
 const z      = base.zod
-const msg_id = base.hex.refine(id => id.length === 32, 'invalid message id')
+const msg_id = base.str.max(32)
 const param  = base.str
 
 const request = z.object({
