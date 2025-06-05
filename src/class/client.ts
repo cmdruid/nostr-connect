@@ -1,28 +1,27 @@
 import { SimplePool }       from 'nostr-tools'
-import { EventEmitter }     from './emitter.js'
+import { EventEmitter }     from '@/class/emitter.js'
+import { SessionManager }   from '@/class/session.js'
 import { gen_message_id }   from '@/lib/util.js'
 import { verify_relays }    from '@/lib/validate.js'
 
+import { EVENT_KIND, REQ_METHOD }   from '@/const.js'
 import { Assert, now, parse_error } from '@/util/index.js'
 
 import {
-  SubCloser,
-  SubscribeManyParams
-} from 'nostr-tools/abstract-pool'
-
-import {
+  create_accept_template,
   create_envelope,
+  create_reject_template,
+  create_request_template,
   decrypt_envelope,
   parse_message
 } from '@/lib/message.js'
 
-
+import type { SubscribeManyParams } from 'nostr-tools/abstract-pool'
 
 import type {
-  EventFilter,
   SignedEvent,
   ClientConfig,
-  SignDeviceAPI,
+  SignerDeviceAPI,
   PublishResponse,
   ClientInboxMap,
   ClientEventMap,
@@ -38,14 +37,8 @@ import type {
  */
 const DEFAULT_CONFIG : () => ClientConfig = () => {
   return {
-    kind: 24133,
-    filter: {
-      kinds : [ 24133 ], // Filter for specific Nostr event type
-      since : now()      // Only get events from current time onwards
-    },
-    req_timeout  : 5000,
-    since_offset : 5,
-    start_delay  : 2000
+    req_timeout : 5000,
+    start_delay : 2000
   }
 }
 
@@ -55,18 +48,16 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   private readonly _pool     : SimplePool
   private readonly _pubkey   : string
   private readonly _relays   : string[]
-  private readonly _signer   : SignDeviceAPI
+  private readonly _session  : SessionManager
+  private readonly _signer   : SignerDeviceAPI
 
   // Message routing system
   private readonly _inbox : ClientInboxMap = {
-    author  : new EventEmitter(), // Route by sender pubkey.
-    request : new EventEmitter(), // Route by message type.
-    response: new EventEmitter()  // Route by message type.
+    req : new EventEmitter(),
+    res : new EventEmitter()
   }
 
-  private _filter : EventFilter
-  private _ready  : boolean = false
-  private _sub    : SubCloser | null = null
+  private _ready : boolean = false
 
   /**
    * Creates a new NostrNode instance.
@@ -78,7 +69,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   constructor (
     pubkey  : string,
     relays  : string[],
-    signer  : SignDeviceAPI,
+    signer  : SignerDeviceAPI,
     options : Partial<ClientConfig> = {}
   ) {
     super()
@@ -90,42 +81,41 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     this._signer = signer
   
     this._config  = get_node_config(options)
-    this._filter  = get_filter_config(this, options.filter)
     this._pool    = new SimplePool()
     this._relays  = relays
-
-    this.emit('info', 'filter:', JSON.stringify(this.filter, null, 2))
+    this._session = new SessionManager(this)
   }
 
   get config() : ClientConfig {
     return this._config
   }
 
-  get filter() : EventFilter {
-    return this._filter
-  }
-
   get inbox() : ClientInboxMap {
     return this._inbox
+  }
+
+  get is_ready() : boolean {
+    return this._ready
   }
 
   get pubkey() : string {
     return this._pubkey
   }
 
-  get ready() : boolean {
-    return this._ready
-  }
-
   get relays() : string[] {
     return this._relays
   }
 
+  get signer() : SignerDeviceAPI {
+    return this._signer
+  }
+
   private async _handler (event : SignedEvent) : Promise<void> {
+    // Ignore events from the client itself.
     if (event.pubkey === this.pubkey) return
-
+    // Emit the event to the client emitter.
     this.emit('event', event)
-
+    // Try to handle the event.
     try {
       // Decrypt and parse the incoming message
       const payload = await decrypt_envelope(event, this._signer)
@@ -135,21 +125,27 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
       // If the message is a request,
       if (type === 'request') {
         // If the message is a ping,
-        if (message.method === 'ping') {
+        if (message.method === REQ_METHOD.PING) {
           // Send a pong response.
           this._pong(message)
+        // If the message is a connection request,
+        } else if (message.method === REQ_METHOD.CONNECT) {
+          // Handle the connect message.
+          this._session.handler(message)
         } else {
-          // Otherwise, emit the message to the request inbox.
-          this.inbox.request.emit(message.method, message)
+          // Fetch the session token from the active session map.
+          const token = this._session.active.get(message.env.pubkey)
+          // If no session exists, ignore the message.
+          if (!token) return
+          // Emit the message to the request inbox.
+          this.inbox.req.emit(message.method, message)
         }
       }
       // If the message is an accept or reject,
       else if (type === 'accept' || type === 'reject') {
         // Emit the message to the response inbox.
-        this.inbox.response.emit(message.id, message)
+        this.inbox.res.emit(message.id, message)
       }
-      // Emit the message to the author inbox.
-      this.inbox.author.emit(message.env.pubkey, message)
       // Emit the message to client emitter.
       this.emit('message', message)
     } catch (err) {
@@ -161,49 +157,84 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   }
 
   private _init() : void {
+    // Set the client to ready.
     this._ready = true
+    // Emit the ready event.
     this.emit('ready', this)
   }
 
-  private _pong (message : RequestMessage) : void {
+  private async _pong (message : RequestMessage) : Promise<PublishedEvent> {
+    // Assert the message is a ping.
     Assert.ok(message.method === 'ping', 'invalid ping message')
-    const template = { result: 'pong', id: message.id }
-    this.send(template, message.env.pubkey)
+    // Create the pong message template.
+    const tmpl  = { result: 'pong', id: message.id }
+    // Send the pong message.
+    return this._send(tmpl, message.env.pubkey)
   }
 
-  /**
-   * Publishes a signed event to the Nostr network.
-   * @param event  Signed event to publish
-   * @returns      Publication status and message ID
-   */
-  private async _publish (
-    event : SignedEvent
-  ) : Promise<PublishResponse> {
-    // Publish to all connected relays
-    const receipts = this._pool.publish(this.relays, event)
-    return Promise.allSettled(receipts).then(resolve_receipts)
+  async _notarize (
+    message   : MessageTemplate,
+    recipient : string
+  ) : Promise<SignedEvent> {
+    // Generate a message ID if not provided.
+    message.id   ??= gen_message_id()
+    // Create the message configuration.
+    const config   = { kind : EVENT_KIND, tags : [] }
+    // Serialize the message.
+    const payload  = JSON.stringify(message)
+    // Return a signed event.
+    return create_envelope(config, payload, recipient, this._signer)
+  }
+
+  private async _send (
+    template  : MessageTemplate,
+    recipient : string
+  ) : Promise<PublishedEvent> {
+    // Create the event.
+    const event    = await this._notarize(template, recipient)
+    // Collect the publication promises.
+    const promises = this._pool.publish(this.relays, event)
+    // Wait for the publication promises to settle.
+    const settled  = await Promise.allSettled(promises)
+    // Parse the receipts.
+    const receipts = parse_receipts(settled)
+    // Return the receipts along with the event.
+    return { ...receipts, event }
   }
 
   private _subscribe() : void {
+    // Get the filter configuration.
+    const filter = { kinds : [ EVENT_KIND ], since : now() }
+    // Create the subscription parameters.
     const params : SubscribeManyParams = {
       onevent : this._handler.bind(this),
-      oneose  : this._init.bind(this)
+      oneose  : this._init.bind(this),
+      onclose : this.close.bind(this)
     }
-    this._sub = this._pool.subscribe(this.relays, this.filter, params)
+    // Subscribe to the relays.
+    this._pool.subscribe(this.relays, filter, params)
   }
 
   /**
    * Establishes connections to configured relays.
-   * @param timeout  The timeout for the connection.
-   * @returns        This node instance
-   * @emits ready    When connections are established
+   * @param req_timeout  The timeout for the connection.
+   * @returns            This node instance.
+   * @emits ready        When connections are established.
    */
-  async connect (timeout? : number) : Promise<this> {
-    timeout ??= this.config.req_timeout
-    // Start listening for events on all relays.
+  async connect (req_timeout? : number) : Promise<this> {
+    // Set the timeout.
+    const timeout = req_timeout ??= this.config.req_timeout
+    // Subscribe to the relays.
     this._subscribe()
-    return new Promise(resolve => {
-      this.once('ready', () => resolve(this))
+    // Wait for the client to be ready.
+    return new Promise((resolve, reject) => {
+      // Set the rejection timer.
+      const timer = setTimeout(() => reject(new Error('failed to connect')), timeout)
+      // If the client is ready, resolve the promise.
+      this.within('ready', () => {
+        clearTimeout(timer)
+        resolve(this)
+      }, timeout)
     })
   }
 
@@ -213,65 +244,98 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
    * @emits close  When all connections are terminated
    */
   async close () : Promise<void> {
-    if (this._sub !== null) {
-      this._sub.close()
-    }
-    if (this._pool.close !== undefined) {
-      this._pool.close(this.relays)
-    }
+    // If the client is not ready, return.
+    if (!this._ready) return
+    // If the pool has a close method, close the relays.
+    if (this._pool.close) this._pool.close(this.relays)
+    // Set the client to not ready.
     this._ready = false
+    // Emit the close event.
     this.emit('close', this)
   }
 
-  async create_event (
-    message   : MessageTemplate,
-    recipient : string
-  ) : Promise<SignedEvent> {
-    message.id   ??= gen_message_id()
-    const config   = { kind : this.config.kind, tags : [] }
-    const payload  = JSON.stringify(message)
-    return create_envelope(config, payload, recipient, this._signer)
-  }
-
+  /**
+   * Pings a recipient.
+   * @param recipient  The recipient of the ping.
+   * @returns          True if the recipient pings back, false otherwise.
+   */
   async ping (recipient : string) : Promise<boolean> {
-    const msg_id   = gen_message_id()
-    const template = { method: 'ping', id: msg_id }
-    return this.request(template, recipient)
+    // Create the ping template.
+    const tmpl = { method: 'ping', id: gen_message_id() }
+    // Send the ping.
+    return this.request(tmpl, recipient)
       .then(res => res.type === 'accept')
       .catch(_ => false)
   }
 
+  /**
+   * Sends a request to a recipient.
+   * @param message      The request message.
+   * @param recipient    The recipient of the request.
+   * @param req_timeout  The timeout for the request.
+   * @returns            The response message.
+   */
   async request (
-    message   : RequestTemplate,
-    recipient : string
+    message      : Partial<RequestTemplate>,
+    recipient    : string,
+    req_timeout? : number
   ) : Promise<ResponseMessage> {
-    if (!message.id) throw new Error('message id is required')
-    const event   = await this.create_event(message, recipient)
-    const timeout = this.config.req_timeout
-    const receipt = new Promise<ResponseMessage>((resolve, reject) => {
-      const timer = setTimeout(() => reject('timeout'), timeout)
-      this.inbox.response.within(message.id, (msg) => {
+    // Create the request template.
+    const config   = { ...message, id: message.id ?? gen_message_id() }
+    // Create the request template.
+    const template = create_request_template(config)
+    // Set the timeout.
+    const timeout  = req_timeout ??= this.config.req_timeout
+    // Create the promise to resolve the response.
+    const receipt  = new Promise<ResponseMessage>((resolve, reject) => {
+      // Set the expiration timer.
+      const timer  = setTimeout(() => reject('timeout'), timeout)
+      // Wait for the response.
+      this.inbox.res.within(template.id, (msg) => {
         clearTimeout(timer)
         resolve(msg)
       }, timeout)
     })
-    this._publish(event)
+    // Send the request.
+    this._send(template, recipient)
+    // Return the promise to resolve the response.
     return receipt
   }
 
   /**
-   * Publishes a message to the Nostr network.
-   * @param message   Message data to publish
-   * @param recipient Target peer's public key
-   * @returns        Publication status and message ID
+   * Send a response to a request.
+   * @param id       The message ID.
+   * @param pubkey   The recipient's public key.
+   * @param result   The result of the request.
+   * @returns        The published event.
    */
-  async send (
-    message   : MessageTemplate,
-    recipient : string
+  async respond (
+    id      : string,
+    pubkey  : string,
+    result  : string
   ) : Promise<PublishedEvent> {
-    const event = await this.create_event(message, recipient)
-    const res   = await this._publish(event)
-    return { ...res, event }
+    // Create the response template.
+    const tmpl = create_accept_template({ id, result })
+    // Send the response.
+    return this._send(tmpl, pubkey)
+  }
+
+  /**
+   * Send a rejection to a request.
+   * @param id       The message ID.
+   * @param pubkey   The recipient's public key.
+   * @param reason   The reason for the rejection.
+   * @returns        The published event.
+   */
+  async reject (
+    id     : string,
+    pubkey : string,
+    reason : string
+  ) : Promise<PublishedEvent> {
+    // Create the rejection template.
+    const tmpl = create_reject_template({ id, error: reason })
+    // Send the rejection.
+    return this._send(tmpl, pubkey)
   }
 }
 
@@ -283,25 +347,15 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
 function get_node_config (
   opt : Partial<ClientConfig> = {}
 ) : ClientConfig {
-  const config = DEFAULT_CONFIG()
-  const filter = { ...config.filter, ...opt.filter }
-  return { ...config, filter }
+  return { ...DEFAULT_CONFIG(), ...opt }
 }
 
 /**
- * Combines custom filter settings with defaults.
- * @param client   Nostr client instance
- * @param filter   Custom filter settings
- * @returns        Complete filter configuration
+ * Parses the receipts from the settled promises.
+ * @param settled  The settled promises.
+ * @returns        The parsed receipts.
  */
-function get_filter_config (
-  client : NostrClient,
-  filter : Partial<EventFilter> = {}
-) : EventFilter {
-  return { ...client.config.filter, ...filter }
-}
-
-function resolve_receipts (
+function parse_receipts (
   settled : PromiseSettledResult<string>[]
 ) : PublishResponse {
   const acks : string[] = [], fails : string[] = []

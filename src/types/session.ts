@@ -1,15 +1,4 @@
-import type {
-  RequestMessage,
-  SignedMessage
-} from '@/types/index.js'
-
 export type PermissionMap = Map<string, number[]>
-
-export type SessionEventMap = {
-  'reject'   : [ reason: string, message: SignedMessage ]
-  'register' : [ token: SessionToken ]
-  'request'  : [ message: RequestMessage ]
-}
 
 export interface SessionOptions {
   perms? : PermissionMap,
@@ -35,4 +24,8 @@ export interface SessionToken {
   name?  : string
   url?   : string
   image? : string
+}
+
+export interface ConnectionToken extends SessionToken {
+  id : string
 }

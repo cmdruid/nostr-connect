@@ -1,7 +1,8 @@
 export interface EventConfig {
-  created_at? : number
-  kind        : number
-  tags        : string[][]
+  content    : string
+  created_at : number
+  kind       : number
+  tags       : string[][]
 }
 
 export interface EventFilter {

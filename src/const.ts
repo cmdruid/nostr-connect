@@ -1,6 +1,7 @@
 export const REQ_TIMEOUT = 5000
+export const EVENT_KIND  = 24133
 
-export const CALL_METHOD = {
+export const REQ_METHOD = {
   CONNECT       : 'connect',
   SIGN_EVENT    : 'sign_event',
   PING          : 'ping',

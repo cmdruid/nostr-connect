@@ -8,14 +8,14 @@ import {
   nip44
 } from 'nostr-tools'
 
-import type { SignDeviceAPI } from '@/types/signer.js'
+import type { SignerDeviceAPI } from '@/types/signer.js'
 
 import type {
   EventTemplate,
   VerifiedEvent
 } from 'nostr-tools'
 
-export class SimpleSigner implements SignDeviceAPI {
+export class SignerDevice implements SignerDeviceAPI {
   private readonly _seckey : Uint8Array
 
   constructor (seckey? : string) {

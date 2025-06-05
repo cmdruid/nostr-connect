@@ -4,25 +4,31 @@ export type MessageTemplate = RequestTemplate | AcceptTemplate | RejectTemplate
 export type ResponseMessage = AcceptMessage   | RejectMessage
 export type SignedMessage   = RequestMessage  | ResponseMessage
 
-export interface BaseMessage {
-  id : string
+export interface MessageConfig {
+  created_at? : number
+  kind        : number
+  tags?       : string[][]
 }
 
-export interface RequestTemplate extends BaseMessage {
+export interface RequestTemplate {
+  id      : string
   method  : string
   params? : string[]
 }
 
-export interface AcceptTemplate extends BaseMessage {
+export interface AcceptTemplate {
+  id     : string
   result : string
 }
 
-export interface RejectTemplate extends BaseMessage {
+export interface RejectTemplate {
+  id    : string
   error : string
 }
 
 export interface RequestMessage extends RequestTemplate {
   env    : SignedEvent
+  id     : string
   params : string[]
   type   : 'request'
 }

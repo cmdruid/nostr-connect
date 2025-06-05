@@ -1,11 +1,10 @@
-import type { NostrClient } from '@cmdcode/nip46-sdk'
-import type { Test }        from 'tape'
+import type { NostrClient, SignServer } from '@cmdcode/nip46-sdk'
+
+import type { Test } from 'tape'
 
 export interface TestContext {
-  clients : {
-    local  : NostrClient
-    remote : NostrClient
-  }
+  client : NostrClient
+  server : SignServer
   relays : string[]
   tape   : Test
 }

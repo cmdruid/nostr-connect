@@ -1,65 +1,75 @@
 import { JsonUtil, now } from '@/util/index.js'
 
 import type {
-  EventConfig,
-  MessageTemplate,
   SignedEvent,
   SignedMessage,
-  SignDeviceAPI,
+  SignerDeviceAPI,
   RequestMessage,
   AcceptMessage,
-  RejectMessage
+  RejectMessage,
+  MessageConfig,
+  RequestTemplate,
+  RejectTemplate,
+  AcceptTemplate
 } from '@/types/index.js'
 
 import * as Schema from '@/schema/index.js'
 
-export function create_message (
-  config : Partial<MessageTemplate>
-) : MessageTemplate {
-  const schema = Schema.message.all
-  const parsed = schema.safeParse(config)
-  if (!parsed.success) throw new Error('invalid message template')
-  return parsed.data
+/**
+ * Creates a request message template from a config object.
+ * @param config  Message configuration
+ * @returns       Message template
+ */
+export function create_request_template (
+  config : Partial<RequestTemplate>
+) : RequestTemplate {
+  // Parse the message template.
+  const schema = Schema.message.request.safeParse(config)
+  // If the message template is invalid, throw an error.
+  if (!schema.success) {
+    console.error(schema.error)
+    throw new Error('invalid request message')
+  }
+  // Return the message template.
+  return schema.data
 }
 
 /**
- * Creates a signed event envelope containing encrypted message content.
- * @param config   Event configuration
- * @param content  String content to encrypt and send
- * @param peer_pk  Recipient's public key
- * @param seckey   Sender's secret key in hex format
- * @returns        Signed Nostr event containing the encrypted message
+ * Creates an accept message template from a config object.
+ * @param config  Message configuration
+ * @returns       Message template
  */
-export async function create_envelope (
-  config    : EventConfig,
-  payload   : string,
-  recipient : string,
-  signer    : SignDeviceAPI
-) : Promise<SignedEvent> {
-  // Define the created_at timestamp.
-  const created_at = config.created_at ?? now()
-  // Define the sender's public key.
-  const pubkey   = await signer.get_pubkey()
-  // Encrypt the payload.
-  const content  = await signer.nip44_encrypt(recipient, payload)
-  // Create an event template.
-  const template = { ...config, pubkey, content, created_at }
-  // Add a tag for the peer's public key.
-  template.tags.push([ 'p', recipient ])
-  // Sign the event.
-  return signer.sign_event(template)
+export function create_accept_template (
+  config : Partial<AcceptTemplate>
+) : AcceptTemplate {
+  // Parse the message template.
+  const schema = Schema.message.accept.safeParse(config)
+  // If the message template is invalid, throw an error.
+  if (!schema.success) {
+    console.error(schema.error)
+    throw new Error('invalid request message')
+  }
+  // Return the message template.
+  return schema.data
 }
 
 /**
- * Decrypts an encrypted event envelope and returns the decrypted payload.
- * @param event  Encrypted event string
- * @returns      Decrypted payload string
+ * Creates a reject message template from a config object.
+ * @param config  Message configuration
+ * @returns       Message template
  */
-export async function decrypt_envelope (
-  event  : SignedEvent,
-  signer : SignDeviceAPI
-) : Promise<string> {
-  return signer.nip44_decrypt(event.pubkey, event.content)
+export function create_reject_template (
+  config : Partial<RejectTemplate>
+) : RejectTemplate {
+  // Parse the message template.
+  const schema = Schema.message.reject.safeParse(config)
+  // If the message template is invalid, throw an error.
+  if (!schema.success) {
+    console.error(schema.error)
+    throw new Error('invalid request message')
+  }
+  // Return the message template.
+  return schema.data
 }
 
 /**
@@ -98,11 +108,58 @@ export function parse_message (
   }
 }
 
-function get_message_type (
+/**
+ * Gets the message type from a message object.
+ * @param msg  Message object
+ * @returns    Message type
+ */
+export function get_message_type (
   msg : Record<string, any>
 ) : string | null {
   if ('method' in msg) return 'request'
   if ('result' in msg) return 'accept'
   if ('error'  in msg) return 'reject'
   return null
+}
+
+/**
+ * Creates a signed event envelope containing encrypted message content.
+ * @param config   Event configuration
+ * @param content  String content to encrypt and send
+ * @param peer_pk  Recipient's public key
+ * @param seckey   Sender's secret key in hex format
+ * @returns        Signed Nostr event containing the encrypted message
+ */
+export async function create_envelope (
+  config    : MessageConfig,
+  payload   : string,
+  recipient : string,
+  signer    : SignerDeviceAPI
+) : Promise<SignedEvent> {
+  // Define the created_at timestamp.
+  const created_at = config.created_at ?? now()
+  // Define the tags.
+  const tags     = config.tags ?? []
+  // Define the sender's public key.
+  const pubkey   = await signer.get_pubkey()
+  // Encrypt the payload.
+  const content  = await signer.nip44_encrypt(recipient, payload)
+  // Create an event template.
+  const template = { ...config, pubkey, content, created_at, tags }
+  // Add a tag for the peer's public key.
+  template.tags.push([ 'p', recipient ])
+  // Sign the event.
+  return signer.sign_event(template)
+}
+
+/**
+ * Decrypts an encrypted event envelope and returns the decrypted payload.
+ * @param event  Encrypted event string
+ * @returns      Decrypted payload string
+ */
+export async function decrypt_envelope (
+  event  : SignedEvent,
+  signer : SignerDeviceAPI
+) : Promise<string> {
+  return signer.nip44_decrypt(event.pubkey, event.content)
 }
