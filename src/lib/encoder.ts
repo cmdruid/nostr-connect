@@ -1,24 +1,10 @@
-import { gen_message_id } from '@/lib/util.js'
-
 import type {
-  SessionToken,
   PermissionMap,
-  ConnectionToken
+  ConnectionToken,
+  InviteToken
 } from '@/types/index.js'
 
-export namespace TokenEncoder {
-  export const connect = {
-    encode: encode_connect_url,
-    decode: decode_connect_url
-  }
-
-  export const session = {
-    encode: encode_bunker_url,
-    decode: decode_bunker_url
-  }
-}
-
-export function encode_bunker_url (token : SessionToken) {
+export function encode_invite_url (token : InviteToken) {
   // Unpack the session token.
   const { pubkey, relays, secret } = token
   // Create the base URL.
@@ -39,7 +25,7 @@ export function encode_bunker_url (token : SessionToken) {
   return url
 }
 
-export function decode_bunker_url (str : string) : SessionToken {
+export function decode_invite_url (str : string) : InviteToken {
   // Convert the string to a URL object.
   const token = new URL(str)
   // Get the pubkey from the hostname.
@@ -60,9 +46,9 @@ export function decode_bunker_url (str : string) : SessionToken {
 
 export function encode_connect_url (token : ConnectionToken) {
   // Unpack the session token.
-  const { id = gen_message_id(), perms, pubkey, relays, secret } = token
+  const { perms, pubkey, relays, secret } = token
   // Create the base connection string.
-  let url = `nostrconnect://${pubkey}?id=${encodeURIComponent(id)}`
+  let url = `nostrconnect://${pubkey}?`
   // Check if the relays are provided.
   if (!relays || relays.length === 0) {
     throw new Error('no relays provided')
@@ -111,8 +97,6 @@ export function decode_connect_url (str : string) : ConnectionToken {
   const secret = params.get('secret')
   // Check if the secret is provided.
   if (!secret) throw new Error('no secret provided')
-  // Get the id.
-  const id    = params.get('id') ?? secret
   // Get the name.
   const name  = params.get('name')  || undefined
   // Get the client host url.
@@ -124,7 +108,7 @@ export function decode_connect_url (str : string) : ConnectionToken {
   // Decode the permissions.
   const perms = pstr ? decode_permissions(pstr) : undefined
   // Return the session token.
-  return { id, pubkey, relays, secret, name, url, image, perms }
+  return { pubkey, relays, secret, name, url, image, perms }
 }
 
 export function encode_permissions (perm_map : PermissionMap) {

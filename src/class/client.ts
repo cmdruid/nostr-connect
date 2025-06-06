@@ -1,11 +1,11 @@
-import { SimplePool }       from 'nostr-tools'
-import { EventEmitter }     from '@/class/emitter.js'
-import { SessionManager }   from '@/class/session.js'
-import { gen_message_id }   from '@/lib/util.js'
-import { verify_relays }    from '@/lib/validate.js'
+import { SimplePool }     from 'nostr-tools'
+import { EventEmitter }   from '@/class/emitter.js'
+import { SessionManager } from '@/class/session.js'
+import { gen_message_id } from '@/lib/util.js'
 
-import { EVENT_KIND, REQ_METHOD }   from '@/const.js'
-import { Assert, now, parse_error } from '@/util/index.js'
+import { EVENT_KIND, REQ_METHOD }       from '@/const.js'
+import { parse_config, verify_options } from '@/lib/validate.js'
+import { Assert, now, parse_error }     from '@/util/index.js'
 
 import {
   create_envelope,
@@ -32,7 +32,8 @@ import type {
   MessageTemplate,
   RequestTemplate,
   ResponseMessage,
-  RequestMessage
+  RequestMessage,
+  ClientOptions
 } from '@/types/index.js'
 
 /**
@@ -40,17 +41,20 @@ import type {
  */
 const DEFAULT_CONFIG : () => ClientConfig = () => {
   return {
-    req_timeout : 5000,
-    start_delay : 2000
+    debug           : false,
+    req_timeout     : 5000,
+    invite_timeout  : 60,
+    verbose         : true
   }
 }
+
+const LOG_PREFIX = '[ nip46 ]'
 
 export class NIP46Client extends EventEmitter <ClientEventMap> {
   // Core node components
   private readonly _config   : ClientConfig
   private readonly _pool     : SimplePool
   private readonly _pubkey   : string
-  private readonly _relays   : string[]
   private readonly _session  : SessionManager
   private readonly _signer   : SignerDeviceAPI
 
@@ -60,33 +64,32 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     res : new EventEmitter()
   }
 
-  private _ready : boolean = false
+  private _ready  : boolean  = false
+  private _relays : string[] = []
 
   /**
    * Creates a new NostrNode instance.
-   * @param relays   Array of relay URLs to connect to.
-   * @param seckey   Secret key in hex format
+   * @param pubkey   The public key of the client.
+   * @param signer   The signer device API.
    * @param options  Optional configuration parameters
-   * @throws {Error} If relays array is invalid or secret key is malformed
    */
   constructor (
     pubkey  : string,
-    relays  : string[],
     signer  : SignerDeviceAPI,
-    options : Partial<ClientConfig> = {}
+    options : ClientOptions = {}
   ) {
+    // Verify the client options.
+    verify_options(options)
+    // Create the event emitter.
     super()
-    
-    // Validate inputs before initialization
-    verify_relays(relays)
-    
+    // Set the client public key and signer.
     this._pubkey = pubkey
     this._signer = signer
-  
+    // Set the client configuration and pool
     this._config  = get_node_config(options)
     this._pool    = new SimplePool()
-    this._relays  = relays
-    this._session = new SessionManager(this)
+    this._relays  = options.relays ?? []
+    this._session = new SessionManager(this, options.sessions ?? [])
   }
 
   get config() : ClientConfig {
@@ -101,6 +104,13 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     return this._ready
   }
 
+  get log() {
+    return {
+      debug : (...args : any[]) => this.config.debug   && console.log(LOG_PREFIX, ...args),
+      info  : (...args : any[]) => this.config.verbose && console.log(LOG_PREFIX, ...args)
+    }
+  }
+
   get pubkey() : string {
     return this._pubkey
   }
@@ -109,12 +119,12 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     return this._relays
   }
 
-  get signer() : SignerDeviceAPI {
-    return this._signer
-  }
-
   get session() : SessionManager {
     return this._session
+  }
+
+  get signer() : SignerDeviceAPI {
+    return this._signer
   }
 
   private async _handler (event : SignedEvent) : Promise<void> {
@@ -137,14 +147,18 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
           this._pong(message)
         // If the message is a connection request,
         } else if (message.method === REQ_METHOD.CONNECT) {
-          // Handle the connect message.
-          this._session.handle_connect(message)
+          // Handle the connect request.
+          this._session.handle_connect_request(message)
+        // If the message is a pubkey request,
         } else if (message.method === REQ_METHOD.GET_PUBKEY) {
           // Handle the get pubkey message.
-          this._session.handle_pubkey(message)
+          this._session.handle_pubkey_request(message)
         } else {
-          // Emit the message to the request inbox.
+          // Emit the message to client emitter.
           this.emit('request', message)
+          // Log the request.
+          this.log.info('received request for method:', message.method)
+          // Emit the request to the request inbox.
           this.inbox.req.emit(message.method, message)
         }
       }
@@ -156,8 +170,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
       // Emit the message to client emitter.
       this.emit('message', message)
     } catch (err) {
-      // Emit the error to the client emitter.
-      this.emit('error', err)
+      // Log the error.
+      this.log.debug('bounced event:', event, err)
       // Emit the bounced event to the client emitter.
       this.emit('bounced', event.id, parse_error(err))
     }
@@ -166,6 +180,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   private _init() : void {
     // Set the client to ready.
     this._ready = true
+    // Log the ready event.
+    this.log.info('connected and subscribed')
     // Emit the ready event.
     this.emit('ready', this)
   }
@@ -175,6 +191,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     Assert.ok(message.method === 'ping', 'invalid ping message')
     // Create the pong message template.
     const tmpl  = { result: 'pong', id: message.id }
+    // Log the pong message.
+    this.log.debug('sending pong:', tmpl, message.env.pubkey)
     // Send the pong message.
     return this._send(tmpl, message.env.pubkey)
   }
@@ -201,6 +219,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     const event    = await this._notarize(template, recipient)
     // Collect the publication promises.
     const promises = this._pool.publish(this.relays, event)
+    // Log the publication.
+    this.log.debug('publishing to relays:', promises)
     // Wait for the publication promises to settle.
     const settled  = await Promise.allSettled(promises)
     // Parse the receipts.
@@ -211,42 +231,6 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.emit('publish', response)
     // Return the response.
     return response
-  }
-
-  private _subscribe() : void {
-    // Get the filter configuration.
-    const filter = { kinds : [ EVENT_KIND ], since : now() }
-    // Create the subscription parameters.
-    const params : SubscribeManyParams = {
-      onevent : this._handler.bind(this),
-      oneose  : this._init.bind(this),
-      onclose : this.close.bind(this)
-    }
-    // Subscribe to the relays.
-    this._pool.subscribe(this.relays, filter, params)
-  }
-
-  /**
-   * Establishes connections to configured relays.
-   * @param req_timeout  The timeout for the connection.
-   * @returns            This node instance.
-   * @emits ready        When connections are established.
-   */
-  async connect (req_timeout? : number) : Promise<this> {
-    // Set the timeout.
-    const timeout = req_timeout ??= this.config.req_timeout
-    // Subscribe to the relays.
-    this._subscribe()
-    // Wait for the client to be ready.
-    return new Promise((resolve, reject) => {
-      // Set the rejection timer.
-      const timer = setTimeout(() => reject(new Error('failed to connect')), timeout)
-      // If the client is ready, resolve the promise.
-      this.within('ready', () => {
-        clearTimeout(timer)
-        resolve(this)
-      }, timeout)
-    })
   }
 
   /**
@@ -261,6 +245,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     if (this._pool.close) this._pool.close(this.relays)
     // Set the client to not ready.
     this._ready = false
+    // Log the close event.
+    this.log.info('connection closed')
     // Emit the close event.
     this.emit('close', this)
   }
@@ -273,6 +259,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   async ping (recipient : string) : Promise<boolean> {
     // Create the ping template.
     const tmpl = { method: 'ping', id: gen_message_id() }
+    // Log the ping.
+    this.log.info('sending ping to:', recipient)
     // Send the ping.
     return this.request(tmpl, recipient)
       .then(res => res.type === 'accept')
@@ -294,7 +282,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     // Create the request template.
     const config   = { ...message, id: message.id ?? gen_message_id() }
     // Create the request template.
-    const template = create_request_template(config)
+    const tmpl     = create_request_template(config)
     // Set the timeout.
     const timeout  = req_timeout ??= this.config.req_timeout
     // Create the promise to resolve the response.
@@ -302,14 +290,16 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
       // Set the expiration timer.
       const timer  = setTimeout(() => reject('timeout'), timeout)
       // Wait for the response.
-      this.inbox.res.within(template.id, (msg) => {
+      this.inbox.res.within(tmpl.id, (msg) => {
         clearTimeout(timer)
         resolve(msg)
       }, timeout)
     })
-    console.log('sending request', template, recipient)
+    // Log the request.
+    this.log.info('sending request to:', recipient)
+    this.log.debug('request:', tmpl)
     // Send the request.
-    this._send(template, recipient)
+    this._send(tmpl, recipient)
     // Return the promise to resolve the response.
     return receipt
   }
@@ -328,7 +318,9 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   ) : Promise<PublishedEvent> {
     // Create the response template.
     const tmpl = create_accept_template({ id, result })
-    console.log('sending response', tmpl, pubkey)
+    // Log the response.
+    this.log.info('sending response to:', pubkey)
+    this.log.debug('response:', tmpl)
     // Send the response.
     return this._send(tmpl, pubkey)
   }
@@ -347,9 +339,37 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   ) : Promise<PublishedEvent> {
     // Create the rejection template.
     const tmpl = create_reject_template({ id, error: reason })
-    console.log('sending rejection', tmpl, pubkey)
+    // Log the rejection.
+    this.log.info('sending rejection to:', pubkey)
+    this.log.debug('rejection:', tmpl)
     // Send the rejection.
     return this._send(tmpl, pubkey)
+  }
+
+  async subscribe (relays : string[] = []) : Promise<void> {
+    // Set the timeout.
+    const timeout = this.config.req_timeout
+    // Set the relays.
+    this._relays  = [ ...this.relays, ...relays ]
+    // Get the filter configuration.
+    const filter = { kinds : [ EVENT_KIND ], since : now() }
+    // Create the subscription parameters.
+    const params : SubscribeManyParams = {
+      onevent : this._handler.bind(this),
+      oneose  : this._init.bind(this),
+      onclose : this.close.bind(this)
+    }
+    // Log the subscription.
+    this.log.info('subscribing to relays:', this.relays)
+    // Subscribe to the relays.
+    this._pool.subscribe(this.relays, filter, params)
+    // Return a promise to resolve when the subscription is established.
+    return new Promise((resolve, reject) => {
+      // Set the rejection timer.
+      const timer = setTimeout(() => reject('timeout'), timeout)
+      // If the client is ready, resolve the promise.
+      this.within('ready', () => { clearTimeout(timer); resolve() }, timeout)
+    })
   }
 }
 
@@ -359,9 +379,9 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
  * @returns        Complete node configuration
  */
 function get_node_config (
-  opt : Partial<ClientConfig> = {}
+  opt : Partial<ClientOptions> = {}
 ) : ClientConfig {
-  return { ...DEFAULT_CONFIG(), ...opt }
+  return parse_config({ ...DEFAULT_CONFIG(), ...opt })
 }
 
 /**
@@ -372,13 +392,13 @@ function get_node_config (
 function parse_receipts (
   settled : PromiseSettledResult<string>[]
 ) : PublishResponse {
-  const acks : string[] = [], fails : string[] = []
+  let acks = 0, fails = 0
   for (const prom of settled) {
     if (prom.status === 'fulfilled') {
-      acks.push(prom.value)
+      acks++
     } else {
-      fails.push(prom.reason)
+      fails++
     }
   }
-  return { acks, fails, ok: acks.length > 0 }
+  return { acks, fails, ok: acks > 0 }
 }

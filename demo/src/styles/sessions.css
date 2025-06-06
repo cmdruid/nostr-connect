@@ -1,0 +1,218 @@
+/* sessions.css - Custom styles for Session Management component
+   Import this file in your component or main CSS entry. */
+
+.sessions-container {
+  background: #181f2a;
+  border-radius: 18px;
+  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
+  padding: 2.5rem;
+  /* max-width: 700px; */
+  /* margin: 2rem auto; */
+  border: 1px solid #232c3b;
+}
+
+.section-header {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.sessions-section {
+  margin-bottom: 2.5rem;
+}
+
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  background: #232c3b;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.10);
+  border: 1px solid #28344a;
+  transition: box-shadow 0.2s;
+}
+.session-card:hover {
+  box-shadow: 0 6px 24px 0 rgba(0,0,0,0.18);
+}
+
+.session-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.session-pubkey {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: #b0b8c9;
+  word-break: break-all;
+}
+
+.session-badge {
+  display: inline-block;
+  padding: 0.25em 1.1em;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px 0 rgba(0,0,0,0.08);
+  background: #e0e7ef;
+  color: #2d3a4a;
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+  margin-right: 0.5em;
+}
+.session-badge.active {
+  background: #b6f3c1;
+  color: #1a6c2e;
+}
+.session-badge.pending {
+  background: #ffe9b3;
+  color: #a67c00;
+}
+
+.session-name {
+  font-family: monospace;
+  font-size: 1.05rem;
+  color: #a3d8ff;
+  margin-right: 1.5em;
+}
+
+.session-created {
+  font-size: 0.85rem;
+  color: #b0b8c9;
+}
+
+.session-revoke-btn {
+  margin-top: 1.2em;
+  align-self: flex-end;
+  padding: 0.7em 2.2em;
+  border-radius: 10px;
+  background: #e74c3c;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  box-shadow: 0 2px 8px 0 rgba(231,76,60,0.10);
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.session-revoke-btn:hover {
+  background: #c0392b;
+  box-shadow: 0 4px 16px 0 rgba(231,76,60,0.18);
+}
+
+/* Session Invites */
+.session-invite-card {
+  background: #232c3b;
+  border-radius: 10px;
+  padding: 1em 1.2em;
+  border: 1px solid #28344a;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-bottom: 0.5em;
+}
+.session-invite-name {
+  font-family: monospace;
+  color: #a3d8ff;
+  font-size: 1rem;
+}
+.session-invite-expiry {
+  font-size: 0.85rem;
+  color: #b0b8c9;
+}
+
+/* Section Titles */
+.sessions-section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.2em;
+  color: #7ecbff;
+}
+
+/* Inputs and Buttons */
+.session-input {
+  width: 100%;
+  padding: 0.9em 1em;
+  border-radius: 8px;
+  border: 1px solid #28344a;
+  background: #1a2233;
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 0.7em;
+  transition: border 0.18s, box-shadow 0.18s;
+}
+.session-input:focus {
+  border-color: #7ecbff;
+  outline: none;
+  box-shadow: 0 0 0 2px #7ecbff33;
+}
+
+.session-btn-primary {
+  width: 100%;
+  padding: 1em 0;
+  border-radius: 8px;
+  background: #3498db;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.05rem;
+  border: none;
+  box-shadow: 0 2px 8px 0 rgba(52,152,219,0.10);
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.session-btn-primary:hover {
+  background: #217dbb;
+  box-shadow: 0 4px 16px 0 rgba(52,152,219,0.18);
+}
+
+/* Error Message */
+.session-error {
+  margin-top: 0.7em;
+  color: #ff6b6b;
+  font-weight: 500;
+  font-size: 0.98rem;
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  gap: 0.2em;
+}
+
+.session-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.7em;
+  min-width: 120px;
+}
+
+@media (min-width: 700px) {
+  .session-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .session-info {
+    flex: 1;
+    align-items: flex-start;
+  }
+  .session-card-actions {
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 140px;
+  }
+} 

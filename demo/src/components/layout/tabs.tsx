@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Console }  from '@/demo/components/dash/console.js'
 import { NodeInfo } from '@/demo/components/dash/node.js'
 import { Sessions } from '@/demo/components/dash/sessions.js'
+import { Invites }  from '@/demo/components/dash/invites.js'
 import { Settings } from '@/demo/components/settings/index.js'
 
 import type { ReactElement } from 'react'
@@ -39,6 +40,7 @@ export function Tabs(): ReactElement {
           <div className="tab-panel">
             <NodeInfo />
             <Sessions />
+            <Invites />
             <Console />
           </div>
         )}

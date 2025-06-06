@@ -1,14 +1,26 @@
-import { Schema } from '@/util/index.js'
+import type { ClientConfig, ClientOptions } from '@/types/index.js'
 
-/**
- * Validates an array of relay URLs.
- * @param relays   Value to validate as relay URL array
- * @throws {Error} If the relay array is invalid
- */
-export function verify_relays (relays : unknown) : asserts relays is string[] {
-  const schema = Schema.str.url().array()
-  const parsed = schema.safeParse(relays)
+import * as Schema from '@/schema/index.js'
+
+export function verify_options (
+  options : unknown
+) : asserts options is ClientOptions {
+  const schema = Schema.client.options
+  const parsed = schema.safeParse(options)
   if (!parsed.success) {
-    throw new Error('invalid relay set: ' + relays)
+    console.error(parsed.error)
+    throw new Error('client options failed validation')
   }
+}
+
+export function parse_config (
+  options : unknown
+) : ClientConfig {
+  const schema = Schema.client.config
+  const parsed = schema.safeParse(options)
+  if (!parsed.success) {
+    console.error(parsed.error)
+    throw new Error('client config failed validation')
+  }
+  return parsed.data
 }

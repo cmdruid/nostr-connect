@@ -4,18 +4,17 @@ import { SignerDevice } from '@/class/signer.js'
 import { getPublicKey } from 'nostr-tools'
 import { useStore }     from '@/demo/store/index.js'
 import { LOG_LIMIT }    from '@/demo/const.js'
+import { REQ_METHOD }   from '@/const.js'
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 
 import type {
   AppStore,
   NodeStatus,
-  StoreReady,
   NodeAPI,
   LogEntry,
   LogType
 } from '@/demo/types/index.js'
-import { REQ_METHOD } from '@/const'
 
 export function useClient () : NodeAPI {
   const [ status, setStatus ] = useState<NodeStatus>('stopped')
@@ -36,7 +35,7 @@ export function useClient () : NodeAPI {
     store.update({ logs: [] })
 
     // Get the nsec and relays from the store.
-    const { nsec, relays } = store.data
+    const { nsec, relays, sessions } = store.data
 
     // Get the URLs from the relays.
     const urls = relays.map(r => r.url)
@@ -48,7 +47,11 @@ export function useClient () : NodeAPI {
     const signer = new SignerDevice(seckey.hex)
 
     // Create a new node.
-    node_ref.current = new NIP46Client(pubkey, urls, signer)
+    node_ref.current = new NIP46Client(pubkey, signer, {
+      debug    : false,
+      relays   : urls,
+      sessions : sessions
+    })
 
     node_ref.current.on('ready', () => {
       console.log('client initialized')
@@ -59,8 +62,22 @@ export function useClient () : NodeAPI {
       setStatus('offline')
     })
 
-    node_ref.current.on('error', (error) => {
+    node_ref.current.on('error', () => {
       setStatus('offline')
+    })
+
+    node_ref.current.session.on('activated', () => {
+      const updated = node_ref.current?.session.active ?? []
+      setTimeout(() => {
+        store.update({ sessions: updated })
+      }, 100)
+    })
+
+    node_ref.current.session.on('revoked', () => {
+      const updated = node_ref.current?.session.active ?? []
+      setTimeout(() => {
+        store.update({ sessions: updated })
+      }, 100)
     })
 
     node_ref.current.on('request', async (message) => {
@@ -142,7 +159,7 @@ export function useClient () : NodeAPI {
       store.update({ logs })
     })
 
-    node_ref.current.connect()
+    node_ref.current.subscribe()
   }
 
   const stop = () => {
@@ -162,7 +179,7 @@ export function useClient () : NodeAPI {
   }), [ reset, stop, status ])
 }
 
-function is_store_ready (store : AppStore) : store is StoreReady {
+function is_store_ready (store : AppStore) {
   return store.nsec !== null && store.relays.length > 0
 }
 

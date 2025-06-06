@@ -3,19 +3,11 @@ import type {
   RelayPolicy
 } from '@/demo/types/node.js'
 
-export type AppStore = StoreInit | StoreReady
+import type { SessionToken } from '@/types/index.js'
 
-export interface BaseStore {
-  relays : RelayPolicy[]
-  logs   : LogEntry[]
-  nsec   : string | null
-}
-
-export interface StoreInit extends BaseStore {
-  group : null
-  share : null
-}
-
-export interface StoreReady extends BaseStore {
-
+export interface AppStore {
+  logs     : LogEntry[]
+  nsec     : string | null
+  relays   : RelayPolicy[]
+  sessions : SessionToken[]
 }

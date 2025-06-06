@@ -11,14 +11,25 @@ import type {
 
 import type { SignedEvent } from './event.js'
 
+export interface ClientOptions {
+  debug?          : boolean
+  relays?         : string[]
+  sessions?       : SessionToken[]
+  req_timeout?    : number
+  invite_timeout? : number
+  verbose?        : boolean
+}
+
 export interface ClientConfig {
-  req_timeout : number
-  start_delay : number
+  debug          : boolean
+  req_timeout    : number
+  invite_timeout : number
+  verbose        : boolean
 }
 
 export interface PublishResponse {
-  acks  : string[]
-  fails : string[]
+  acks  : number
+  fails : number
   ok    : boolean
 }
 
@@ -41,8 +52,5 @@ export interface ClientEventMap extends Record<string, any> {
   'message'    : [ message: SignedMessage ]
   'ready'      : [ client: NIP46Client ]
   'subscribed' : [ sub_id : string ]
-  'activated'  : [ token: SessionToken ]
-  'issued'     : [ token: SessionToken ]
-  'pending'    : [ token: SessionToken ]
   'request'    : [ message: RequestMessage ]
 }

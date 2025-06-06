@@ -32,7 +32,9 @@ export class DBController<T> {
 
   set (value : T ) : void {
     try {
-      localStorage.setItem(this._store_key, JSON.stringify(value))
+      const current = this.get()
+      const merged  = this._merge(current, value)
+      localStorage.setItem(this._store_key, JSON.stringify(merged))
       this._notify_subs()
     } catch (error) {
       console.error('Error saving to localStorage:', error)
@@ -45,10 +47,35 @@ export class DBController<T> {
   }
 
   update (value : Partial<T>) : void {
-    this.set({ ...this.get(), ...value })
+    const current = this.get()
+    const updated = this._merge(current, value)
+    this.set(updated)
   }
 
   private _notify_subs(): void {
     this._subs.forEach(subscriber => subscriber())
+  }
+
+  private _merge (target: any, source: any): T {
+    const output = { ...target }
+    
+    if (this._is_object(target) && this._is_object(source)) {
+      Object.keys(source).forEach(key => {
+        if (this._is_object(source[key])) {
+          if (!(key in target)) {
+            Object.assign(output, { [key]: source[key] })
+          } else {
+            output[key] = this._merge(target[key], source[key])
+          }
+        } else {
+          Object.assign(output, { [key]: source[key] })
+        }
+      })
+    }
+    return output
+  }
+
+  private _is_object(item: any): boolean {
+    return (item && typeof item === 'object' && !Array.isArray(item))
   }
 }
