@@ -1,6 +1,6 @@
-# nip46-sdk
+# nostr-nip46
 
-Development kit for creating a NIP-46 remote signing client.
+Reference NIP-46 signing client and session manager.
 
 ## Features
 
@@ -11,23 +11,21 @@ Development kit for creating a NIP-46 remote signing client.
 
 ## Overview
 
-This project provides the basic tools nessecary to build your own NIP-46 signing client, using the following building blocks:
-
-`NostrClient`: Basic client for handling JSON-RPC messages. Connects to a list of relays, and listens for NIP-46 messages. Also supports sending NIP-46 messages.
-
-`SessionManager`: Class for creating, registering, and managing NIP-46 connection requests. Supports both `bunker://` and `nostrconnect://` URI schemes for establishing a session. Will also filter incoming NIP-46 requests and provide basic authentication.
-
-`SignDeviceAPI`: API interface for connecting a signing device. This allows you to plug-in your own device and hook it into the signing methods required by the `NostrClient` and `SessionManager`.
-
-`EventEmitter`: Both the `NostrClient` and `SessionManager` supply a modular emitter interface for registering your own hooks and custom logic.
-
-This SDK is designed to be as un-opinionated as possible. It should work with your own signing device and user application.
+More documentation coming soon!
 
 ## Installation
 
 ```bash
-npm install @cmdcode/nip46-sdk
+npm install @cmdcode/nostr-nip46
 ```
+
+## How to Use
+
+*coming soon*
+
+## Development
+
+*coming soon*
 
 ## Contributing
 
