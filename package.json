@@ -1,12 +1,12 @@
 {
-  "name": "@cmdcode/nip46-sdk",
+  "name": "@cmdcode/nostr-nip46",
   "version": "0.0.1",
-  "description": "NIP-46 remote client SDK.",
+  "description": "NIP-46 remote client and session manager.",
   "author": "Christopher Scott",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cmdcode/nip46-sdk"
+    "url": "https://github.com/cmdcode/nostr-nip46"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
