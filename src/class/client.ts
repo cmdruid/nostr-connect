@@ -64,8 +64,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     res : new EventEmitter()
   }
 
-  private _ready  : boolean  = false
-  private _relays : string[] = []
+  private _ready  : boolean     = false
+  private _relays : Set<string> = new Set()
 
   /**
    * Creates a new NostrNode instance.
@@ -88,7 +88,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     // Set the client configuration and pool
     this._config  = get_node_config(options)
     this._pool    = new SimplePool()
-    this._relays  = options.relays ?? []
+    this._relays  = new Set(options.relays ?? [])
     this._session = new SessionManager(this, options.sessions ?? [])
   }
 
@@ -116,7 +116,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   }
 
   get relays() : string[] {
-    return this._relays
+    return Array.from(this._relays)
   }
 
   get session() : SessionManager {
@@ -178,6 +178,10 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   }
 
   private _init() : void {
+    // Emit the subscribed event.
+    this.emit('subscribed')
+    // If the client is already ready, return.
+    if (this._ready) return
     // Set the client to ready.
     this._ready = true
     // Log the ready event.
@@ -231,6 +235,36 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.emit('publish', response)
     // Return the response.
     return response
+  }
+
+  async _subscribe (relays : string[] = []) : Promise<void> {
+    // Add the relays to the set.
+    for (const relay of relays) this._relays.add(relay)
+    // Get the filter configuration.
+    const filter = { kinds : [ EVENT_KIND ], since : now() }
+    // Create the subscription parameters.
+    const params : SubscribeManyParams = {
+      onevent : this._handler.bind(this),
+      oneose  : this._init.bind(this)
+    }
+    // Log the subscription.
+    this.log.info('subscribing to relays:', this.relays)
+    // Subscribe to the relays.
+    this._pool.subscribe(this.relays, filter, params)
+  }
+
+  async connect (relays? : string[]) : Promise<void> {
+    // Set the timeout.
+    const timeout = this.config.req_timeout
+    // Subscribe to the relays.
+    this._subscribe(relays)
+    // Return a promise to resolve when the subscription is established.
+    return new Promise((resolve, reject) => {
+      // Set the rejection timer.
+      const timer = setTimeout(() => reject('timeout'), timeout)
+      // If the client is ready, resolve the promise.
+      this.within('ready', () => { clearTimeout(timer); resolve() }, timeout)
+    })
   }
 
   /**
@@ -349,26 +383,14 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   async subscribe (relays : string[] = []) : Promise<void> {
     // Set the timeout.
     const timeout = this.config.req_timeout
-    // Set the relays.
-    this._relays  = [ ...this.relays, ...relays ]
-    // Get the filter configuration.
-    const filter = { kinds : [ EVENT_KIND ], since : now() }
-    // Create the subscription parameters.
-    const params : SubscribeManyParams = {
-      onevent : this._handler.bind(this),
-      oneose  : this._init.bind(this),
-      onclose : this.close.bind(this)
-    }
-    // Log the subscription.
-    this.log.info('subscribing to relays:', this.relays)
     // Subscribe to the relays.
-    this._pool.subscribe(this.relays, filter, params)
+    await this._subscribe(relays)
     // Return a promise to resolve when the subscription is established.
     return new Promise((resolve, reject) => {
       // Set the rejection timer.
       const timer = setTimeout(() => reject('timeout'), timeout)
       // If the client is ready, resolve the promise.
-      this.within('ready', () => { clearTimeout(timer); resolve() }, timeout)
+      this.within('subscribed', () => { clearTimeout(timer); resolve() }, timeout)
     })
   }
 }

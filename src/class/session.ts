@@ -166,6 +166,11 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
   async register (connect_tkn : ConnectionToken) : Promise<PublishedEvent> {
     // Unpack the connection token.
     const { secret, ...tkn } = connect_tkn
+    // If the client has missing relays,
+    if (has_missing_relays(this._client, tkn.relays)) {
+      // Update our subscription list.
+      await this._client.subscribe(tkn.relays)
+    }
     // Send a response to the issuing client.
     const res = await this._client.respond(secret, tkn.pubkey, secret)
     // If the message is not accepted, return early.
@@ -216,4 +221,16 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     this._timers.clear()
     this.emit('cleared')
   }
+}
+
+function has_missing_relays (
+  client : NIP46Client,
+  relays : string[],
+) : boolean {
+  for (const relay of relays) {
+    if (!client.relays.includes(relay)) {
+      return true
+    }
+  }
+  return false
 }

@@ -51,6 +51,6 @@ export interface ClientEventMap extends Record<string, any> {
   'event'      : [ event: SignedEvent ]
   'message'    : [ message: SignedMessage ]
   'ready'      : [ client: NIP46Client ]
-  'subscribed' : [ sub_id : string ]
+  'subscribed' : []
   'request'    : [ message: RequestMessage ]
 }
