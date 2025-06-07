@@ -113,13 +113,13 @@ export function decode_connect_url (str : string) : ConnectionToken {
 
 export function encode_permissions (perm_map : PermissionMap) {
   // Get the entries from the permission map.
-  const entries  = Array.from(perm_map.entries())
+  const entries  = Object.entries(perm_map)
   // Create the permission string.
   let perm_str = ''
   // Iterate over the entries.
   entries.forEach(([ key, values ]) => {
     // Check if the values are empty.
-    if (values.length === 0) {
+    if (!Array.isArray(values) || values.length === 0) {
       // Add the key to the permission string.
       perm_str += `${key},`
     } else {
@@ -136,7 +136,7 @@ export function encode_permissions (perm_map : PermissionMap) {
 
 export function decode_permissions (str : string) {
   // Create the permission map.
-  const perms   = new Map<string, number[]>()
+  const perms   : PermissionMap = {}
   // Split the permission string into entries.
   const entries = str.split(',')
   // Iterate over the entries.
@@ -144,14 +144,14 @@ export function decode_permissions (str : string) {
     // Split the entry into key and value.
     const [ key, value ] = entry.split(':')
     // Get the current value for the key.
-    const curr = perms.get(key) || []
+    const curr = perms[key] || []
     // Check if the value is a string.
-    if (typeof value === 'string') {
+    if (Array.isArray(curr) && typeof value === 'string') {
       // Parse the value as an integer and add it to the current value.
-      perms.set(key, [ ...curr, parseInt(value) ])
+      perms[key] = [ ...curr, parseInt(value) ]
     } else {
       // Add the value to the current value.
-      perms.set(key, [ ...curr, value ])
+      perms[key] = true
     }
   })
   // Return the permission map.

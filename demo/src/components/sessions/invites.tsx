@@ -15,12 +15,12 @@ export function Invites() {
   const [ current, setCurrent ] = useState<number>(now())
 
   const updateInvites = () => {
-    const ref = client.ref.current
+    const ref = client.ref
     setInvites(ref?.session.invites || [])
   }
 
   useEffect(() => {
-    const ref = client.ref.current
+    const ref = client.ref
     updateInvites()
     ref?.on('invite', updateInvites)
     ref?.on('cancelled', updateInvites)
@@ -33,9 +33,8 @@ export function Invites() {
   }, [ client ])
 
   const handleCreateInvite = () => {
-    const ref = client.ref.current
-    const session = ref?.session
-    const inviteToken = session?.invite()
+    const session = client.ref?.session
+    const inviteToken = session?.create_invite()
     if (!inviteToken) return
     const connectString = TokenEncoder.invite.encode(inviteToken)
     navigator.clipboard.writeText(connectString)
@@ -60,11 +59,11 @@ export function Invites() {
           <div className="invites-list">
             {invites.map(([ secret, token ]) => {
               // Calculate seconds left
-              const timeout     = client.ref.current?.config.invite_timeout || 0
+              const timeout     = client.ref?.config.invite_timeout || 0
               const expiresAt   = token.created_at + timeout
               const secondsLeft = Math.max(0, expiresAt - current)
               const handleDelete = () => {
-                client.ref.current?.session.cancel_invite(secret)
+                client.ref?.session.cancel_invite(secret)
                 updateInvites()
               }
               return (

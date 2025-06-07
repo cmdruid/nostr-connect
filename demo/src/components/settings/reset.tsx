@@ -1,4 +1,4 @@
-import { useStore } from '@/demo/store/index.js'
+import { useStore } from '@/demo/context/store.js'
 
 export function ResetStore() {
   const store = useStore()

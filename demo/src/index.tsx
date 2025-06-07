@@ -1,7 +1,8 @@
 import { StrictMode }     from 'react'
 import { createRoot }     from 'react-dom/client'
 import { ClientProvider } from '@/demo/context/client.js'
-import { StoreProvider }  from '@/demo/store/index.js'
+import { StoreProvider }  from '@/demo/context/store.js'
+import { LogsProvider }   from '@/demo/context/logs.js'
 import { App }            from '@/demo/components/layout/app.js'
 
 import '@/demo/styles/global.css'
@@ -22,9 +23,11 @@ const root = createRoot(container)
 root.render(
   <StrictMode>
     <StoreProvider>
-      <ClientProvider>
-        <App />
-      </ClientProvider>
+      <LogsProvider>
+        <ClientProvider>
+          <App />
+        </ClientProvider>
+      </LogsProvider>
     </StoreProvider>
   </StrictMode>
 )

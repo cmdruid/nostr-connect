@@ -1,11 +1,10 @@
-import type { MutableRefObject } from 'react'
-import type { NIP46Client }      from '@/class/client'
+import type { NIP46Client } from '@/class/client'
 
 export type LogType    = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
 export type NodeStatus = 'stopped' | 'online' | 'offline'
 
-export interface NodeAPI {
-  ref    : MutableRefObject<NIP46Client | null>
+export interface ClientAPI {
+  ref    : NIP46Client | null
   reset  : () => void
   stop   : () => void
   status : NodeStatus

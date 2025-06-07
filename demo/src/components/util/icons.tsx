@@ -111,3 +111,27 @@ export const NodeIcon = () => (
       <rect x="3" y="14" width="7" height="7"></rect>
     </svg>
   );
+
+  // Sessions icon with handshake design
+  export const SessionsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Left arm */}
+      <path d="M2 16h6l2-2"></path>
+      {/* Right arm */}
+      <path d="M22 16h-6l-2-2"></path>
+      {/* Left hand fingers */}
+      <path d="M8 12v2"></path>
+      <path d="M9 12v3"></path>
+      <path d="M10 13v2"></path>
+      {/* Right hand fingers */}
+      <path d="M16 12v2"></path>
+      <path d="M15 12v3"></path>
+      <path d="M14 13v2"></path>
+      {/* Connecting grip */}
+      <path d="M10 14h4"></path>
+      {/* Success sparkles */}
+      <path d="M12 6v2"></path>
+      <path d="M8 8l1.5 1.5"></path>
+      <path d="M16 8l-1.5 1.5"></path>
+    </svg>
+  );

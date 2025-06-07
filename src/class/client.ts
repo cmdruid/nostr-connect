@@ -44,6 +44,7 @@ const DEFAULT_CONFIG : () => ClientConfig = () => {
     debug           : false,
     req_timeout     : 5000,
     invite_timeout  : 60,
+    pending_timeout : 10,
     verbose         : true
   }
 }
@@ -116,7 +117,13 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   }
 
   get relays() : string[] {
-    return Array.from(this._relays)
+    let _relays = new Set(this._relays)
+    for (const session of this._session.active) {
+      for (const relay of session.relays) {
+        _relays.add(relay)
+      }
+    }
+    return Array.from(_relays)
   }
 
   get session() : SessionManager {
@@ -138,7 +145,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
       const payload = await decrypt_envelope(event, this._signer)
       const message = parse_message(payload, event)
       const type    = message.type
-
+      // Emit the message to client emitter.
+      this.emit('message', message)
       // If the message is a request,
       if (type === 'request') {
         // If the message is a ping,
@@ -148,38 +156,40 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
         // If the message is a connection request,
         } else if (message.method === REQ_METHOD.CONNECT) {
           // Handle the connect request.
-          this._session.handle_connect_request(message)
+          this._session.handle_connect_req(message)
         // If the message is a pubkey request,
         } else if (message.method === REQ_METHOD.GET_PUBKEY) {
           // Handle the get pubkey message.
-          this._session.handle_pubkey_request(message)
+          this._session.handle_pubkey_req(message)
         } else {
+          // Get the session token.
+          const session = this._session.get_session(message.env.pubkey)
+          // If the session token is not found, return early.
+          if (!session) return
           // Emit the message to client emitter.
-          this.emit('request', message)
+          this.emit('request', message, session)
           // Log the request.
           this.log.info('received request for method:', message.method)
           // Emit the request to the request inbox.
           this.inbox.req.emit(message.method, message)
         }
-      }
-      // If the message is an accept or reject,
-      else if (type === 'accept' || type === 'reject') {
+      } else if (type === 'accept' || type === 'reject') {
         // Emit the message to the response inbox.
         this.inbox.res.emit(message.id, message)
       }
-      // Emit the message to client emitter.
-      this.emit('message', message)
     } catch (err) {
       // Log the error.
-      this.log.debug('bounced event:', event, err)
+      this.log.debug('bounced:', event, err)
       // Emit the bounced event to the client emitter.
-      this.emit('bounced', event.id, parse_error(err))
+      this.emit('bounced', event, parse_error(err))
     }
   }
 
-  private _init() : void {
+  private _eose (relays : string[]) : void {
+    // Log the subscription.
+    this.log.info('subscribed to relays:', relays)
     // Emit the subscribed event.
-    this.emit('subscribed')
+    this.emit('subscribed', relays)
     // If the client is already ready, return.
     if (this._ready) return
     // Set the client to ready.
@@ -187,7 +197,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     // Log the ready event.
     this.log.info('connected and subscribed')
     // Emit the ready event.
-    this.emit('ready', this)
+    this.emit('ready')
   }
 
   private async _pong (message : RequestMessage) : Promise<PublishedEvent> {
@@ -217,12 +227,15 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
 
   private async _send (
     template  : MessageTemplate,
-    recipient : string
+    recipient : string,
+    relays?   : string[]
   ) : Promise<PublishedEvent> {
+    // Combine the relays.
+    const _relays  = combine_relays(this.relays, relays ?? [])
     // Create the event.
     const event    = await this._notarize(template, recipient)
     // Collect the publication promises.
-    const promises = this._pool.publish(this.relays, event)
+    const promises = this._pool.publish(_relays, event)
     // Log the publication.
     this.log.debug('publishing to relays:', promises)
     // Wait for the publication promises to settle.
@@ -237,20 +250,18 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     return response
   }
 
-  async _subscribe (relays : string[] = []) : Promise<void> {
-    // Add the relays to the set.
-    for (const relay of relays) this._relays.add(relay)
+  async _subscribe (relays? : string[]) : Promise<void> {
+    // Combine the relays.
+    const _relays = combine_relays(this.relays, relays ?? [])
     // Get the filter configuration.
     const filter = { kinds : [ EVENT_KIND ], since : now() }
     // Create the subscription parameters.
     const params : SubscribeManyParams = {
       onevent : this._handler.bind(this),
-      oneose  : this._init.bind(this)
+      oneose  : this._eose.bind(this, _relays)
     }
-    // Log the subscription.
-    this.log.info('subscribing to relays:', this.relays)
     // Subscribe to the relays.
-    this._pool.subscribe(this.relays, filter, params)
+    this._pool.subscribe(_relays, filter, params)
   }
 
   async connect (relays? : string[]) : Promise<void> {
@@ -282,7 +293,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     // Log the close event.
     this.log.info('connection closed')
     // Emit the close event.
-    this.emit('close', this)
+    this.emit('close')
   }
 
   /**
@@ -311,14 +322,14 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   async request (
     message      : Partial<RequestTemplate>,
     recipient    : string,
-    req_timeout? : number
+    relays?      : string[]
   ) : Promise<ResponseMessage> {
     // Create the request template.
     const config   = { ...message, id: message.id ?? gen_message_id() }
     // Create the request template.
     const tmpl     = create_request_template(config)
     // Set the timeout.
-    const timeout  = req_timeout ??= this.config.req_timeout
+    const timeout  = this.config.req_timeout
     // Create the promise to resolve the response.
     const receipt  = new Promise<ResponseMessage>((resolve, reject) => {
       // Set the expiration timer.
@@ -333,7 +344,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.log.info('sending request to:', recipient)
     this.log.debug('request:', tmpl)
     // Send the request.
-    this._send(tmpl, recipient)
+    this._send(tmpl, recipient, relays)
     // Return the promise to resolve the response.
     return receipt
   }
@@ -348,7 +359,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   async respond (
     id      : string,
     pubkey  : string,
-    result  : string
+    result  : string,
+    relays? : string[]
   ) : Promise<PublishedEvent> {
     // Create the response template.
     const tmpl = create_accept_template({ id, result })
@@ -356,7 +368,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.log.info('sending response to:', pubkey)
     this.log.debug('response:', tmpl)
     // Send the response.
-    return this._send(tmpl, pubkey)
+    return this._send(tmpl, pubkey, relays)
   }
 
   /**
@@ -369,7 +381,8 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
   async reject (
     id     : string,
     pubkey : string,
-    reason : string
+    reason : string,
+    relays? : string[]
   ) : Promise<PublishedEvent> {
     // Create the rejection template.
     const tmpl = create_reject_template({ id, error: reason })
@@ -377,10 +390,10 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.log.info('sending rejection to:', pubkey)
     this.log.debug('rejection:', tmpl)
     // Send the rejection.
-    return this._send(tmpl, pubkey)
+    return this._send(tmpl, pubkey, relays)
   }
 
-  async subscribe (relays : string[] = []) : Promise<void> {
+  async subscribe (relays? : string[]) : Promise<void> {
     // Set the timeout.
     const timeout = this.config.req_timeout
     // Subscribe to the relays.
@@ -423,4 +436,15 @@ function parse_receipts (
     }
   }
   return { acks, fails, ok: acks > 0 }
+}
+
+function combine_relays (
+  curr_relays : string[],
+  new_relays  : string[]
+) : string[] {
+  let _relays = new Set(curr_relays)
+  for (const relay of new_relays) _relays.add(relay)
+  return Array.from(_relays)
+    .map(e => e.trim())
+    .map(e => e.endsWith('/') ? e.slice(0, -1) : e)
 }

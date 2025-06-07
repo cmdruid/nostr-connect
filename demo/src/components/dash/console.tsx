@@ -1,17 +1,9 @@
-import { useStore } from '@/demo/store/index.js'
+import { useLogs } from '@/demo/context/logs.js'
 import { useState } from 'react'
 import '@/demo/styles/console.css'
 
-// Assuming log entries might have a 'payload' for JSON data
-// interface LogEntryType {
-//   timestamp: number;
-//   type: string;
-//   message: string;
-//   payload?: any;
-// }
-
 export function Console () {
-  const store = useStore()
+  const logs = useLogs()
   
   const [expandedIndices, setExpandedIndices] = useState<Record<number, boolean>>({})
 
@@ -21,7 +13,7 @@ export function Console () {
 
   // Clear logs handler
   const clear_logs = async () => {
-    store.update({ logs: [] })
+    logs.clearLogs()
     setExpandedIndices({})
   }
 
@@ -29,7 +21,7 @@ export function Console () {
     <div className="console-container">
       <div className="console-header-controls">
         <h2 className="section-header">
-          Event Log <span className="event-count">({store.data.logs.length} events)</span>
+          Event Log <span className="event-count">({logs.entries.length} events)</span>
         </h2>
         <button className="button clear-button" onClick={clear_logs} title="Clear logs">
           <svg 
@@ -54,10 +46,10 @@ export function Console () {
       <p className="description">Monitor events from your bifrost node.</p>
       
       <div className="console-output">
-        {store.data.logs.length === 0 ? (
+        {logs.entries.length === 0 ? (
           <div className="console-empty">No events logged yet</div>
         ) : (
-          store.data.logs.map((log, idx) => (
+          logs.entries.map((log, idx) => (
             <div key={idx} className={`console-entry ${log.payload ? 'expandable' : ''}`}>
               <div className="entry-header" onClick={() => log.payload && toggleExpand(idx)}>
                 <div className="entry-prefix">

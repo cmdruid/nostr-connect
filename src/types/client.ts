@@ -1,6 +1,5 @@
 
 import type { EventEmitter } from '@/class/emitter.js'
-import type { NIP46Client }  from '@/class/client.js'
 import type { SessionToken } from './session.js'
 
 import type {
@@ -12,19 +11,21 @@ import type {
 import type { SignedEvent } from './event.js'
 
 export interface ClientOptions {
-  debug?          : boolean
-  relays?         : string[]
-  sessions?       : SessionToken[]
-  req_timeout?    : number
-  invite_timeout? : number
-  verbose?        : boolean
+  debug?           : boolean
+  relays?          : string[]
+  sessions?        : SessionToken[]
+  req_timeout?     : number
+  invite_timeout?  : number
+  pending_timeout? : number
+  verbose?         : boolean
 }
 
 export interface ClientConfig {
-  debug          : boolean
-  req_timeout    : number
-  invite_timeout : number
-  verbose        : boolean
+  debug           : boolean
+  req_timeout     : number
+  invite_timeout  : number
+  pending_timeout : number
+  verbose         : boolean
 }
 
 export interface PublishResponse {
@@ -43,14 +44,14 @@ export interface ClientInboxMap {
 }
 
 export interface ClientEventMap extends Record<string, any> {
-  'bounced'    : [ event_id : string, error : string ]
-  'closed'     : [ client: NIP46Client ]
+  'bounced'    : [ event: SignedEvent, error: string ]
+  'closed'     : []
   'debug'      : unknown[]
   'error'      : unknown[]
   'info'       : unknown[]
   'event'      : [ event: SignedEvent ]
   'message'    : [ message: SignedMessage ]
-  'ready'      : [ client: NIP46Client ]
-  'subscribed' : []
-  'request'    : [ message: RequestMessage ]
+  'ready'      : []
+  'subscribed' : [ relays: string[] ]
+  'request'    : [ message: RequestMessage, session: SessionToken ]
 }

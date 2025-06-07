@@ -1,5 +1,5 @@
 import { useEffect, useState }      from 'react'
-import { useStore }                 from '@/demo/store/index.js'
+import { useStore }                 from '@/demo/context/store.js'
 import { generateSecretKey, nip19 } from 'nostr-tools'
 
 export function NsecConfig() {

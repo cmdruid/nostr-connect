@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useStore }            from '@/demo/store/index.js'
+import { useStore }            from '@/demo/context/store.js'
 
 import type { RelayPolicy } from '@/demo/types/index.js'
 

@@ -4,6 +4,7 @@ export class DBController<T> {
   private readonly _defaults  : T
   private readonly _store_key : string
   private readonly _subs      : Set<Subscriber> = new Set()
+  private _pending_update     : boolean = false
 
   constructor (
     store_key : string,
@@ -20,25 +21,20 @@ export class DBController<T> {
   get () : T {
     try {
       const item = localStorage.getItem(this._store_key)
+      console.log('fetching from local storage:', item)
       return item ? JSON.parse(item) : this._defaults
-    } catch {
+    } catch (error) {
+      console.error('error fetching from local storage:', error)
       return this._defaults
     }
   }
 
   reset () : void {
-    this.set(this._defaults)
+    this._atomic_set(this._defaults)
   }
 
   set (value : T ) : void {
-    try {
-      const current = this.get()
-      const merged  = this._merge(current, value)
-      localStorage.setItem(this._store_key, JSON.stringify(merged))
-      this._notify_subs()
-    } catch (error) {
-      console.error('Error saving to localStorage:', error)
-    }
+    this._atomic_set(value)
   }
 
   subscribe (callback : Subscriber) : () => void {
@@ -47,9 +43,32 @@ export class DBController<T> {
   }
 
   update (value : Partial<T>) : void {
-    const current = this.get()
-    const updated = this._merge(current, value)
-    this.set(updated)
+    // Prevent concurrent updates by queuing them
+    if (this._pending_update) {
+      setTimeout(() => this.update(value), 0)
+      return
+    }
+
+    this._pending_update = true
+    
+    try {
+      const current = this.get()
+      const updated = this._merge(current, value)
+      console.log('updating local storage:', updated)
+      this._atomic_set(updated)
+    } finally {
+      this._pending_update = false
+    }
+  }
+
+  private _atomic_set (value : T) : void {
+    try {
+      console.log('saving to local storage:', value)
+      localStorage.setItem(this._store_key, JSON.stringify(value))
+      this._notify_subs()
+    } catch (error) {
+      console.error('error saving to local storage:', error)
+    }
   }
 
   private _notify_subs(): void {

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Console }  from '@/demo/components/dash/console.js'
 import { NodeInfo } from '@/demo/components/dash/node.js'
-import { Sessions } from '@/demo/components/dash/sessions.js'
-import { Invites }  from '@/demo/components/dash/invites.js'
+import { Sessions } from '@/demo/components/sessions/sessions.js'
+import { Invites }  from '@/demo/components/sessions/invites.js'
 import { Settings } from '@/demo/components/settings/index.js'
 
 import type { ReactElement } from 'react'
@@ -25,6 +25,14 @@ export function Tabs(): ReactElement {
             <span>Dashboard</span>
           </button>
 
+          <button 
+            className={`tab-button ${activeTab === 'sessions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sessions')}
+          >
+            <Icons.SessionsIcon />
+            <span>Sessions</span>
+          </button>
+
           <button
             className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
@@ -39,9 +47,14 @@ export function Tabs(): ReactElement {
         {activeTab === 'dashboard' && (
           <div className="tab-panel">
             <NodeInfo />
+            <Console />
+          </div>
+        )}
+
+        {activeTab === 'sessions' && (
+          <div className="tab-panel">
             <Sessions />
             <Invites />
-            <Console />
           </div>
         )}
 
