@@ -2,16 +2,18 @@
    Import this file in your component or main CSS entry. */
 
 .sessions-container {
-  background: #181f2a;
+  background: rgba(15, 25, 45, 0.9);
   border-radius: 18px;
   box-shadow: 0 4px 32px 0 rgba(0,0,0,0.18);
   padding: 2.5rem;
-  /* max-width: 700px; */
-  /* margin: 2rem auto; */
+  width: 100%;
+  box-sizing: border-box;
+  margin: 2rem 0;
   border: 1px solid #232c3b;
 }
 
-.section-header {
+.sessions-container .section-header,
+.invites-container .section-header {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 2rem;
@@ -38,6 +40,7 @@
   border: 1px solid #28344a;
   transition: box-shadow 0.2s;
   gap: 1rem;
+  position: relative;
 }
 .session-card:hover {
   box-shadow: 0 6px 24px 0 rgba(0,0,0,0.18);
@@ -71,18 +74,32 @@
 }
 
 .copy-pubkey-btn {
-  background: #28344a;
-  border: 1px solid #3d4a63;
-  border-radius: 4px;
-  padding: 0.2rem 0.4rem;
-  color: #b0b8c9;
-  font-size: 0.8rem;
+  background: none;
+  border: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  padding: 4px;
+  font-size: 1em;
+  transition: transform 0.2s;
 }
+
 .copy-pubkey-btn:hover {
-  background: #3d4a63;
-  color: #fff;
+  transform: scale(1.1);
+}
+
+.session-cancel-btn {
+  background-color: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s;
+}
+
+.session-cancel-btn:hover {
+  background-color: #e0e0e0;
+  color: #333;
 }
 
 .session-badge {
@@ -97,6 +114,11 @@
   text-transform: capitalize;
   letter-spacing: 0.01em;
   margin-right: 0.5em;
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  z-index: 2;
+  margin: 0;
 }
 .session-badge.active {
   background: #b6f3c1;
@@ -105,6 +127,33 @@
 .session-badge.pending {
   background: #ffe9b3;
   color: #a67c00;
+}
+
+.session-name-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.session-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.session-url {
+  color: #666;
+  font-size: 0.9em;
+  text-decoration: none;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.session-url:hover {
+  text-decoration: underline;
+  color: #333;
 }
 
 .session-name {
@@ -432,6 +481,14 @@
   min-width: 140px;
 }
 
+.session-card-actions-bottom {
+  margin-top: 0.6rem;
+  justify-content: flex-end;
+  display: flex;
+  flex-direction: row;
+  gap: 0.7rem;
+}
+
 @media (min-width: 700px) {
   .session-header {
     align-items: flex-start;
@@ -441,5 +498,40 @@
   }
   .session-card-actions {
     min-width: 140px;
+  }
+  .sessions-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .sessions-container {
+    max-width: 100%;
+    width: 100vw;
+    padding: 1rem 0.5rem;
+    border-radius: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .session-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .session-card-actions {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    gap: 0.7rem;
+    margin-top: 0.7rem;
+  }
+  .session-badge {
+    top: 0.7rem;
+    right: 1rem;
+  }
+  .session-card-actions-bottom {
+    margin-top: 0.5rem;
   }
 } 

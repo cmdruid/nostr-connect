@@ -1,12 +1,13 @@
 import type { NIP46Client } from '@/class/client'
 
 export type LogType    = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
-export type NodeStatus = 'stopped' | 'online' | 'offline'
+export type NodeStatus = 'online' | 'offline' | 'locked'
 
-export interface ClientAPI {
+export interface NostrClientAPI {
   ref    : NIP46Client | null
+  lock   : () => void
+  unlock : (password : string) => void
   reset  : () => void
-  stop   : () => void
   status : NodeStatus
 }
 

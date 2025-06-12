@@ -1,6 +1,6 @@
 export * from './client.js'
 export * from './event.js'
 export * from './message.js'
-export * from './api.js'
+export * from './params.js'
 export * from './session.js'
 export * from './signer.js'

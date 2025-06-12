@@ -1,28 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import QrScanner from 'qr-scanner'
+import '@/styles/scanner.css'
 
 interface QRScannerProps {
   onResult: (result: string) => void
-  onError?: (error: Error)   => void
+  onError?: (error: Error) => void
 }
-
-const styles = {
-  container: {
-    width: '100%',
-    maxWidth: '400px',
-    margin: '1rem auto',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    overflow: 'hidden',
-    position: 'relative' as const,
-    backgroundColor: '#000'
-  },
-  video: {
-    width: '100%',
-    height: 'auto',
-    display: 'block'
-  }
-} as const
 
 export function QRScanner({ onResult, onError }: QRScannerProps) {
   const videoRef   = useRef<HTMLVideoElement>(null)
@@ -77,30 +60,19 @@ export function QRScanner({ onResult, onError }: QRScannerProps) {
   }, [onResult, onError])
 
   return (
-    <div style={styles.container}>
+    <div className="scanner-container">
       <video 
         ref={videoRef} 
-        style={styles.video} 
+        className="scanner-video" 
         playsInline 
         autoPlay 
         muted
       />
       {error && (
-        <div style={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)',
-          background: 'rgba(0,0,0,0.7)',
-          color: 'white',
-          padding: '1rem',
-          borderRadius: '4px',
-          textAlign: 'center' as const,
-          zIndex: 1000
-        }}>
+        <div className="scanner-error">
           {error}
           {hasPerm === false && (
-            <div style={{ marginTop: '1rem' }}>
+            <div className="scanner-error-permission">
               Please grant camera permissions to use the QR scanner
             </div>
           )}

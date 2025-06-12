@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Console }  from '@/demo/components/dash/console.js'
 import { NodeInfo } from '@/demo/components/dash/node.js'
 import { Sessions } from '@/demo/components/sessions/sessions.js'
-import { Invites }  from '@/demo/components/sessions/invites.js'
 import { Settings } from '@/demo/components/settings/index.js'
 
 import type { ReactElement } from 'react'
@@ -54,7 +53,6 @@ export function Tabs(): ReactElement {
         {activeTab === 'sessions' && (
           <div className="tab-panel">
             <Sessions />
-            <Invites />
           </div>
         )}
 

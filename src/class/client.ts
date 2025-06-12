@@ -26,7 +26,6 @@ import type {
   ClientConfig,
   SignerDeviceAPI,
   PublishResponse,
-  ClientInboxMap,
   ClientEventMap,
   PublishedEvent,
   MessageTemplate,
@@ -49,27 +48,21 @@ const DEFAULT_CONFIG : () => ClientConfig = () => {
   }
 }
 
-const LOG_PREFIX = '[ nip46 ]'
+const LOG_PREFIX = '[ connect ]'
 
-export class NIP46Client extends EventEmitter <ClientEventMap> {
-  // Core node components
+export class SessionClient extends EventEmitter <ClientEventMap> {
+
   private readonly _config   : ClientConfig
   private readonly _pool     : SimplePool
   private readonly _pubkey   : string
   private readonly _session  : SessionManager
   private readonly _signer   : SignerDeviceAPI
 
-  // Message routing system
-  private readonly _inbox : ClientInboxMap = {
-    req : new EventEmitter(),
-    res : new EventEmitter()
-  }
-
-  private _ready  : boolean     = false
-  private _relays : Set<string> = new Set()
+  private _ready  : boolean  = false
+  private _relays : string[] = []
 
   /**
-   * Creates a new NostrNode instance.
+   * Creates a new instance.
    * @param pubkey   The public key of the client.
    * @param signer   The signer device API.
    * @param options  Optional configuration parameters
@@ -89,16 +82,12 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     // Set the client configuration and pool
     this._config  = get_node_config(options)
     this._pool    = new SimplePool()
-    this._relays  = new Set(options.relays ?? [])
+    this._relays  = options.relays ?? []
     this._session = new SessionManager(this, options.sessions ?? [])
   }
 
   get config() : ClientConfig {
     return this._config
-  }
-
-  get inbox() : ClientInboxMap {
-    return this._inbox
   }
 
   get is_ready() : boolean {
@@ -116,7 +105,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     return this._pubkey
   }
 
-  get relays() : string[] {
+  get relays () : string[] {
     let _relays = new Set(this._relays)
     for (const session of this._session.active) {
       for (const relay of session.relays) {
@@ -141,7 +130,7 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     this.emit('event', event)
     // Try to handle the event.
     try {
-      // Decrypt and parse the incoming message
+      // Decrypt and parse the incoming message.
       const payload = await decrypt_envelope(event, this._signer)
       const message = parse_message(payload, event)
       const type    = message.type
@@ -153,29 +142,23 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
         if (message.method === REQ_METHOD.PING) {
           // Send a pong response.
           this._pong(message)
-        // If the message is a connection request,
-        } else if (message.method === REQ_METHOD.CONNECT) {
-          // Handle the connect request.
-          this._session.handle_connect_req(message)
         // If the message is a pubkey request,
-        } else if (message.method === REQ_METHOD.GET_PUBKEY) {
+        } else if (this._session.methods.includes(message.method)) {
           // Handle the get pubkey message.
-          this._session.handle_pubkey_req(message)
+          this._session.handler(message)
         } else {
           // Get the session token.
-          const session = this._session.get_session(message.env.pubkey)
+          const session = this._session.get(message.env.pubkey)
           // If the session token is not found, return early.
           if (!session) return
-          // Emit the message to client emitter.
-          this.emit('request', message, session)
           // Log the request.
           this.log.info('received request for method:', message.method)
-          // Emit the request to the request inbox.
-          this.inbox.req.emit(message.method, message)
+          // Emit the message to client emitter.
+          this.emit('request', message, session)
         }
       } else if (type === 'accept' || type === 'reject') {
-        // Emit the message to the response inbox.
-        this.inbox.res.emit(message.id, message)
+        // Emit the message to client emitter.
+        this.emit('response', message)
       }
     } catch (err) {
       // Log the error.
@@ -252,16 +235,16 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
 
   async _subscribe (relays? : string[]) : Promise<void> {
     // Combine the relays.
-    const _relays = combine_relays(this.relays, relays ?? [])
+    this._relays = combine_relays(this.relays, relays ?? [])
     // Get the filter configuration.
     const filter = { kinds : [ EVENT_KIND ], since : now() }
     // Create the subscription parameters.
     const params : SubscribeManyParams = {
       onevent : this._handler.bind(this),
-      oneose  : this._eose.bind(this, _relays)
+      oneose  : this._eose.bind(this, this._relays)
     }
     // Subscribe to the relays.
-    this._pool.subscribe(_relays, filter, params)
+    this._pool.subscribe(this._relays, filter, params)
   }
 
   async connect (relays? : string[]) : Promise<void> {
@@ -335,9 +318,13 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
       // Set the expiration timer.
       const timer  = setTimeout(() => reject('timeout'), timeout)
       // Wait for the response.
-      this.inbox.res.within(tmpl.id, (msg) => {
-        clearTimeout(timer)
-        resolve(msg)
+      this.within('response', (msg : ResponseMessage) => {
+        // If the message ID matches the request ID,
+        if (msg.id === tmpl.id) {
+          // Clear the timeout and resolve the promise.
+          clearTimeout(timer)
+          resolve(msg)
+        }
       }, timeout)
     })
     // Log the request.
@@ -393,6 +380,11 @@ export class NIP46Client extends EventEmitter <ClientEventMap> {
     return this._send(tmpl, pubkey, relays)
   }
 
+  /**
+   * Subscribes to a list of relays.
+   * @param relays  The list of relays to subscribe to.
+   * @returns       A promise to resolve when the subscription is established.
+   */
   async subscribe (relays? : string[]) : Promise<void> {
     // Set the timeout.
     const timeout = this.config.req_timeout

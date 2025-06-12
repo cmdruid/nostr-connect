@@ -8,7 +8,7 @@ import {
 import type { ReactNode } from 'react'
 
 import type {
-  ClientAPI,
+  NostrClientAPI,
   NodeStatus
 } from '@/demo/types/index.js'
 
@@ -16,7 +16,7 @@ interface ProviderProps {
   children : ReactNode
 }
 
-const Context = createContext<ClientAPI | null>(null)
+const Context = createContext<NostrClientAPI | null>(null)
 
 export function ClientProvider ({ children }: ProviderProps): JSX.Element {
   const client = useClient()

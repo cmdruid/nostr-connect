@@ -1,7 +1,5 @@
 export type PermissionMap = Record<string, boolean | number[]>
 
-export type InviteEntry = [ secret : string, token : SessionToken ]
-
 export interface BaseToken {
   pubkey     : string
   relays     : string[]
@@ -9,12 +7,6 @@ export interface BaseToken {
   name?      : string
   url?       : string
   image?     : string
-}
-
-export interface InviteToken {
-  pubkey : string
-  relays : string[]
-  secret : string
 }
 
 export interface ConnectionToken extends BaseToken {
@@ -45,7 +37,6 @@ export interface SessionEventMap extends Record<string, any> {
   cancelled : [ SessionToken ]
   cleared   : [ void ]
   revoked   : [ SessionToken ]
-  invite    : [ SessionToken ]
   pending   : [ SessionToken ]
   updated   : [ SessionToken ]
 }

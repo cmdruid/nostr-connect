@@ -45,5 +45,7 @@ export async function decrypt_envelope (
   event  : SignedEvent,
   signer : SignerDeviceAPI
 ) : Promise<string> {
-  return signer.nip44_decrypt(event.pubkey, event.content)
+  return event.content.includes('?iv=')
+    ? signer.nip04_decrypt(event.pubkey, event.content)
+    : signer.nip44_decrypt(event.pubkey, event.content)
 }

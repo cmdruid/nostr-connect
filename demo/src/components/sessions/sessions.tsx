@@ -16,6 +16,7 @@ export function Sessions() {
   const [expandedPermissions, setExpandedPermissions] = useState<Set<string>>(new Set())
   const [editingPermissions, setEditingPermissions] = useState<Record<string, PermissionMap>>({})
   const [newEventKind, setNewEventKind] = useState<Record<string, string>>({})
+  const [copiedPubkey, setCopiedPubkey] = useState<string | null>(null)
 
   // Update sessions when they change
   useEffect(() => {
@@ -40,14 +41,18 @@ export function Sessions() {
   }, [ client ])
 
   const handleRevokeSession = (pubkey: string) => {
-    client.ref?.session.revoke_session(pubkey)
+    client.ref?.session.revoke(pubkey)
+  }
+
+  const handleCancelSession = (pubkey: string) => {
+    client.ref?.session.cancel(pubkey)
   }
 
   const handleActivateSession = async () => {
     try {
       setError(null)
       const token = TokenEncoder.connect.decode(connectString)
-      await client.ref?.session.register_session(token)
+      await client.ref?.session.register(token)
       setConnectString('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to activate session')
@@ -101,7 +106,7 @@ export function Sessions() {
         perms: editingPermissions[pubkey] || {}
       }
 
-      await client.ref?.session.update_session(updatedSession)
+      await client.ref?.session.update(updatedSession)
       
       // Close the dropdown after successful update
       const newExpanded = new Set(expandedPermissions)
@@ -124,6 +129,8 @@ export function Sessions() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+    setCopiedPubkey(text)
+    setTimeout(() => setCopiedPubkey(null), 2000) // Reset after 2 seconds
   }
 
   // Combine active and pending sessions
@@ -147,10 +154,30 @@ export function Sessions() {
               
               return (
                 <div key={session.pubkey} className="session-card">
-                  {/* Header with session info and actions */}
+                  {/* Badge in top-right */}
+                  <span className={`session-badge ${session.status}`}>{session.status}</span>
                   <div className="session-header">
                     <div className="session-info">
-                      <span className="session-name">{session.name ?? 'unknown'}</span>
+                      <div className="session-name-container">
+                        {session.image && (
+                          <img 
+                            src={session.image} 
+                            alt={`${session.name || 'Unknown'} icon`}
+                            className="session-icon"
+                          />
+                        )}
+                        <span className="session-name">{session.name ?? 'unknown'}</span>
+                      </div>
+                      {session.url && (
+                        <a 
+                          href={session.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="session-url"
+                        >
+                          {new URL(session.url).hostname}
+                        </a>
+                      )}
                       <div className="session-pubkey-container">
                         <span className="session-pubkey">{truncatedPubkey}</span>
                         <button
@@ -158,25 +185,12 @@ export function Sessions() {
                           className="copy-pubkey-btn"
                           title="Copy full public key"
                         >
-                          📋
+                          {copiedPubkey === session.pubkey ? '✓' : '📋'}
                         </button>
                       </div>
                       <span className="session-created">Created: {new Date(session.created_at * 1000).toLocaleString()}</span>
                     </div>
-                    
-                    <div className="session-card-actions">
-                      <span className={`session-badge ${session.status}`}>{session.status}</span>
-                      {session.status === 'active' && (
-                        <button
-                          onClick={() => handleRevokeSession(session.pubkey)}
-                          className="session-revoke-btn"
-                        >
-                          Revoke
-                        </button>
-                      )}
-                    </div>
                   </div>
-                  
                   {/* Permissions Toggle */}
                   <div className="session-permissions-toggle">
                     <button
@@ -186,7 +200,6 @@ export function Sessions() {
                       {expandedPermissions.has(session.pubkey) ? 'Hide' : 'Show'} Permissions
                     </button>
                   </div>
-                  
                   {/* Permissions Dropdown */}
                   {expandedPermissions.has(session.pubkey) && (
                     <PermissionsDropdown
@@ -198,6 +211,24 @@ export function Sessions() {
                       onUpdateSession={() => handleUpdateSession(session.pubkey)}
                     />
                   )}
+                  {/* Revoke/Cancel button in bottom-right */}
+                  <div className="session-card-actions-bottom">
+                    {session.status === 'active' ? (
+                      <button
+                        onClick={() => handleRevokeSession(session.pubkey)}
+                        className="session-revoke-btn"
+                      >
+                        Revoke
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleCancelSession(session.pubkey)}
+                        className="session-cancel-btn"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })}

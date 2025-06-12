@@ -11,12 +11,7 @@
   box-sizing: border-box;
 }
 
-.section-header {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  color: #fff;
-}
+/* Section header styles defined in sessions.css for both sessions and invites */
 
 .invites-section {
   margin-bottom: 2.5rem;

@@ -15,13 +15,25 @@ import type {
   VerifiedEvent
 } from 'nostr-tools'
 
+const SIGN_METHODS : Record<string, string> = {
+  sign_event    : 'sign_event',
+  nip04_encrypt : 'nip04_encrypt',
+  nip04_decrypt : 'nip04_decrypt',
+  nip44_encrypt : 'nip44_encrypt',
+  nip44_decrypt : 'nip44_decrypt'
+}
+
 export class SignerDevice implements SignerDeviceAPI {
   private readonly _seckey : Uint8Array
 
-  constructor (seckey? : string) {
+  constructor (seckey? : string | Uint8Array) {
     this._seckey = (seckey)
-      ? Buff.hex(seckey)
+      ? Buff.bytes(seckey)
       : generateSecretKey()
+  }
+
+  async get_methods () : Promise<Record<string, string>> {
+    return SIGN_METHODS
   }
 
   async get_pubkey () : Promise<string> {

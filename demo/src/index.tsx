@@ -10,6 +10,20 @@ import '@/demo/styles/layout.css'
 import '@/demo/styles/node.css'
 import '@/demo/styles/settings.css'
 
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      })
+      console.log('[ app ] service worker registered with scope:', registration.scope)
+    } catch (error) {
+      console.error('[ app ] service worker registration failed:', error)
+    }
+  })
+}
+
 // Fetch the root container.
 const container = document.getElementById('root')
 

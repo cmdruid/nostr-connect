@@ -1,5 +1,4 @@
 
-import type { EventEmitter } from '@/class/emitter.js'
 import type { SessionToken } from './session.js'
 
 import type {
@@ -38,20 +37,16 @@ export interface PublishedEvent extends PublishResponse {
   event : SignedEvent
 }
 
-export interface ClientInboxMap {
-  req : EventEmitter<Record<string, [ RequestMessage  ]>>
-  res : EventEmitter<Record<string, [ ResponseMessage ]>>
-}
-
 export interface ClientEventMap extends Record<string, any> {
   'bounced'    : [ event: SignedEvent, error: string ]
   'closed'     : []
   'debug'      : unknown[]
   'error'      : unknown[]
-  'info'       : unknown[]
   'event'      : [ event: SignedEvent ]
+  'info'       : unknown[]
   'message'    : [ message: SignedMessage ]
   'ready'      : []
-  'subscribed' : [ relays: string[] ]
   'request'    : [ message: RequestMessage, session: SessionToken ]
+  'response'   : [ message: ResponseMessage ]
+  'subscribed' : [ relays: string[] ]
 }

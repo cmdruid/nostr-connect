@@ -111,7 +111,7 @@ async function build(): Promise<void> {
       'styles': path.resolve('./src/styles')
     },
     resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.css', '.json'],
-    external: ['@frostr/bifrost', '@frostr/bifrost/util'],
+    external: [],
     loader: {
       '.tsx' : 'tsx',
       '.ts'  : 'ts',
@@ -149,6 +149,18 @@ async function build(): Promise<void> {
     format      : 'esm',
   }
 
+  // Build service worker
+  const swBuildOptions: BuildOptions = {
+    ...commonOptions,
+    entryPoints : ['src/sw.ts'],
+    outfile     : 'dist/sw.js',
+    format      : 'iife',
+    loader      : {
+      '.tsx' : 'tsx',
+      '.ts'  : 'ts',
+    },
+  }
+
   // Copy CSS files to dist
   const copyCssFiles = async () => {
     const srcStylesDir = path.join('src', 'styles')
@@ -174,6 +186,8 @@ async function build(): Promise<void> {
       ...appBuildOptions,
       plugins: [cssPlugin]
     })
+
+    const swContext = await esbuild.context(swBuildOptions)
     
     // Watch CSS files
     const watchCssFiles = async () => {
@@ -199,6 +213,7 @@ async function build(): Promise<void> {
     
     await Promise.all([
       appContext.watch(),
+      swContext.watch(),
       watchCssFiles()
     ])
     
@@ -210,6 +225,7 @@ async function build(): Promise<void> {
         ...appBuildOptions,
         plugins: [cssPlugin]
       }),
+      esbuild.build(swBuildOptions),
       copyCssFiles()
     ])
     

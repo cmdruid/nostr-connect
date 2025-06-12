@@ -1,5 +1,4 @@
-/* global.css - Master Stylesheet for Frostr Chrome Extension */
-/* Generated: March 06, 2025 */
+/* global.css - Master Stylesheet NIP-46 Web Demo */
 
 /* ========================================================================= */
 /* Base Styles - Foundation of the Design System */
@@ -58,6 +57,7 @@ h1, h2, h3, h4, h5, h6 { color: #d8d8d8; margin-top: 0; }
 
 .pill { display: inline-block; background: rgba(74, 144, 226, 0.2); color: #4a90e2; border-radius: 30px; padding: 3px 10px; font-size: 12px; margin-left: 6px; vertical-align: middle; }
 .alpha-pill { background: rgba(227, 92, 92, 0.2); color: #e84545; border-radius: 12px; padding: 3px 10px; font-size: 10px; margin-left: 8px; }
+.alpha-pill-standalone { margin-left: 0; }
 
 .frost-logo { width: 80px; height: 80px; margin-bottom: 1rem; transition: all 0.3s ease; filter: drop-shadow(0 0 5px rgba(74, 144, 226, 0.3)); }
 .frost-logo:hover { filter: drop-shadow(0 0 8px rgba(74, 144, 226, 0.6)); transform: scale(1.05); }
@@ -75,7 +75,7 @@ pre.code-display {
   border: 1px solid rgba(100, 140, 210, 0.3);
 }
 
-.error-text { color: #e74c3c; }
+.error-text { color: #e74c3c; } /* Base error text color, component-specific overrides in respective files */
 .toast-text { color: #5ce24a; }
 
 .input-group { display: flex; align-items: center; margin-bottom: 15px; }
@@ -173,31 +173,24 @@ input[type="checkbox"] { margin-right: 10px; width: 16px; height: 16px; accent-c
 .fade { opacity: 0.7; }
 
 /* Icon and Navigation Alignment Fix */
-.tab-button,
 .button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.tab-button svg,
 .button svg {
   flex-shrink: 0;
   position: relative;
   top: 0;
 }
 
-.tab-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.button span,
-.tab-button span {
+.button span {
   display: inline-block;
   vertical-align: middle;
 }
+
+/* Tab button styles are defined in layout.css */
 
 /* Table styles - Global enhancements for all tables */
 table {
@@ -255,6 +248,16 @@ tr:hover:not(thead tr) {
     min-width: 100%;
     table-layout: fixed;
   }
+}
+
+/* Pubkey cell styles - used across components */
+.pubkey-cell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 12px;
 }
 
 /* Text overflow handling for all tables */
@@ -456,4 +459,24 @@ th, td {
   font-weight: 500;
   text-transform: capitalize;
   margin: 0;
+}
+
+.status-indicator.online {
+  background: #00b894;
+  color: #fff;
+}
+
+.status-indicator.offline {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.status-indicator.stopped {
+  background: #666;
+  color: #fff;
+}
+
+.status-indicator.locked {
+  background: #fdcb6e;
+  color: #000;
 }

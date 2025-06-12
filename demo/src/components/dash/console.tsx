@@ -43,7 +43,7 @@ export function Console () {
           </svg>
         </button>
       </div>
-      <p className="description">Monitor events from your bifrost node.</p>
+      <p className="description">Monitor events from your node.</p>
       
       <div className="console-output">
         {logs.entries.length === 0 ? (

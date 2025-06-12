@@ -1,47 +1,11 @@
 import type {
   PermissionMap,
-  ConnectionToken,
-  InviteToken
+  ConnectionToken
 } from '@/types/index.js'
 
-export function encode_invite_url (token : InviteToken) {
-  // Unpack the session token.
-  const { pubkey, relays, secret } = token
-  // Create the base URL.
-  let url = `bunker://${pubkey}?`
-  // Check if relays are provided.
-  if (!relays || relays.length === 0) {
-    throw new Error('no relays provided')
-  }
-  // Add the relays to the URL.
-  relays.forEach((relay) => {
-    url += `relay=${encodeURIComponent(relay)}&`
-  })
-  // Check if the secret is provided.
-  if (!secret) throw new Error('no secret provided')
-  // Add the secret to the URL.
-  url += `secret=${encodeURIComponent(secret)}`
-  // Return the URL.
-  return url
-}
-
-export function decode_invite_url (str : string) : InviteToken {
-  // Convert the string to a URL object.
-  const token = new URL(str)
-  // Get the pubkey from the hostname.
-  const pubkey = token.hostname
-  // Get the query params.
-  const params = token.searchParams
-  // Get the relays.
-  const relays = params.getAll('relay')
-  // Check if the relays are provided.
-  if (relays.length === 0) throw new Error('no relays provided')
-  // Get the secret.
-  const secret = params.get('secret')
-  // Check if the secret is provided.
-  if (!secret) throw new Error('no secret provided')
-  // Return the session token.
-  return { pubkey, relays, secret }
+export namespace ConnectToken {
+  export const encode = encode_connect_url
+  export const decode = decode_connect_url
 }
 
 export function encode_connect_url (token : ConnectionToken) {

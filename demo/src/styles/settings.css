@@ -156,30 +156,32 @@
   margin-bottom: 20px;
 }
 
-.pubkey-cell {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: monospace;
-  font-size: 12px;
-}
+/* Pubkey cell styles moved to global.css */
 
 .checkbox-cell {
   width: 80px;
   text-align: center;
 }
 
-/* Alpha Pill */
-.alpha-pill {
-  background: rgba(227, 92, 92, 0.2);
-  color: #e84545;
-  border-radius: 12px;
-  padding: 3px 10px;
-  font-size: 10px;
-  margin-left: 8px;
+/* Alpha pill styles inherited from global.css */
+
+.nsec-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.alpha-pill-standalone {
-  margin-left: 0;
+.password-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.flex-input {
+  flex: 1;
+}
+
+.flex-btn {
+  min-width: 90px;
 } 

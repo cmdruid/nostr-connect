@@ -1,12 +1,12 @@
 {
-  "name": "@cmdcode/nostr-nip46",
+  "name": "@cmdcode/nostr-connect",
   "version": "0.0.1",
-  "description": "NIP-46 remote client and session manager.",
+  "description": "Client and session manager for nostr connect.",
   "author": "Christopher Scott",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cmdcode/nostr-nip46"
+    "url": "https://github.com/cmdcode/nostr-connect"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
@@ -38,6 +38,8 @@
   },
   "scripts": {
     "build": "./script/build.sh",
+    "demo:build": "cd demo && npm run build",
+    "demo:dev": "cd demo && npm run dev",
     "loader": "tsx --tsconfig ./test/tsconfig.json",
     "release": "npm test | faucet && npm run build",
     "scratch": "npm run loader test/scratch.ts",

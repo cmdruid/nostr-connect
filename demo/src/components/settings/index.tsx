@@ -1,11 +1,11 @@
 import { RelayConfig }       from './relays.js'
 import { ResetStore }        from './reset.js'
-import { NsecConfig }        from './nsec.js'
+import { SecretConfig }        from './secret.js'
 
 export function Settings () {
   return (
     <>
-      <NsecConfig />
+      <SecretConfig />
       <RelayConfig       />
       <ResetStore        />
     </>
