@@ -1,7 +1,7 @@
 import * as base  from '@/util/schema.js'
 
 const z      = base.zod
-const msg_id = base.str.max(32)
+const msg_id = base.str.max(64)
 const param  = base.str
 
 const request = z.object({

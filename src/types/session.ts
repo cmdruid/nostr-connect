@@ -20,6 +20,12 @@ export interface SessionOptions {
   image? : string
 }
 
+export interface SessionConfig extends SessionOptions {
+  name   : string
+  pubkey : string
+  relays : string[]
+}
+
 export type SessionParams = [
   pubkey : string,
   perms? : PermissionMap,
@@ -32,11 +38,20 @@ export interface SessionToken extends BaseToken {
   created_at : number
 }
 
+export interface SessionManagerOptions extends Partial<SessionManagerConfig> {
+  sessions? : SessionToken[]
+}
+
+export interface SessionManagerConfig {
+  debug   : boolean
+  timeout : number
+  verbose : boolean
+}
+
 export interface SessionEventMap extends Record<string, any> {
   activated : [ SessionToken ]
-  cancelled : [ SessionToken ]
   cleared   : [ void ]
-  revoked   : [ SessionToken ]
+  revoked   : [ string ]
   pending   : [ SessionToken ]
   updated   : [ SessionToken ]
 }

@@ -23,7 +23,7 @@ const SIGN_METHODS : Record<string, string> = {
   nip44_decrypt : 'nip44_decrypt'
 }
 
-export class SignerDevice implements SignerDeviceAPI {
+export class SimpleSigner implements SignerDeviceAPI {
   private readonly _seckey : Uint8Array
 
   constructor (seckey? : string | Uint8Array) {
@@ -32,11 +32,11 @@ export class SignerDevice implements SignerDeviceAPI {
       : generateSecretKey()
   }
 
-  async get_methods () : Promise<Record<string, string>> {
-    return SIGN_METHODS
+  get_methods () : string[] {
+    return Object.values(SIGN_METHODS)
   }
 
-  async get_pubkey () : Promise<string> {
+  get_pubkey () : string {
     return getPublicKey(this._seckey)
   }
 

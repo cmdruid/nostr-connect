@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*" : [ "src/*" ],
+      "@/*" : [ "src/*" ]
     },
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -28,6 +28,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": [ "dist", "node_modules", "test" ],
+  "exclude": [ "dist", "node_modules" ],
   "include": [ "src/**/*.ts" ]
 }

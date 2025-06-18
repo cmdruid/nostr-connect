@@ -16,22 +16,12 @@ const session = base.zod.object({
   image  : base.str.optional(),
 })
 
-const options = base.zod.object({
-  debug           : base.bool,
-  verbose         : base.bool,
-  relays          : base.str.array(),
-  sessions        : session.array(),
-  req_timeout     : base.num,
-  invite_timeout  : base.num,
-  pending_timeout : base.num,
-}).partial()
-
 const config = base.zod.object({
-  debug           : base.bool,
-  verbose         : base.bool,
-  req_timeout     : base.num,
-  invite_timeout  : base.num,
-  pending_timeout : base.num,
+  debug   : base.bool,
+  verbose : base.bool,
+  timeout : base.num,
 })
+
+const options = config.partial()
 
 export { config, options, perm_map, perm_value, session }

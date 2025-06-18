@@ -16,8 +16,11 @@
     "incremental": true,
     "baseUrl": "..",
     "paths": {
-      "@/*"      : [ "src/*"             ],
-      "@/demo/*" : [ "demo/src/*"        ]
+      "@/*"           : [ "src/*"             ],
+      "@/source"      : [ "src/index.ts"      ],
+      "@/source/lib"  : [ "src/lib/index.ts"  ],
+      "@/source/util" : [ "src/util/index.ts" ],
+      "@/demo/*"      : [ "demo/src/*"        ]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

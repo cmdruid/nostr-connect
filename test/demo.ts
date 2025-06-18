@@ -1,49 +1,82 @@
-import { NostrNode }  from '@cmdcode/nostr-p2p'
-import { gen_seckey } from '@cmdcode/nostr-p2p/lib'
-import { NostrRelay } from '@/test/lib/relay.js'
+import { PeerManager, SessionManager } from '@/index.js'
 
-// Configure the demo.
-const alice_sk = gen_seckey()
-const bob_sk   = gen_seckey()
-const relays   = [ 'ws://localhost:8002' ]
+import { create_client } from '@/test/lib/client.js'
 
 // Create the actors.
-const Alice = new NostrNode(relays, alice_sk)
-const Bob   = new NostrNode(relays, bob_sk)
-const Relay = new NostrRelay(8002)
+const Alice = create_client('alice')
+const Carol = create_client('carol')
 
-// Configure the Alice node.
-Alice.inbox.tag.on('ping', (msg) => {
-  const res = { id: msg.id, tag: 'pong', data: 'pong!' }
-  Alice.publish(res, msg.env.pubkey)
+const relays = [ 'ws://localhost:8080' ]
+
+const peers    = new PeerManager(Alice,    { verbose: false })
+const sessions = new SessionManager(Carol, { verbose: false })
+
+Alice.on('request', (req) => {
+  console.log('[ alice ] sent request')
+  console.dir(req, { depth: null })
 })
 
-Alice.on('ready', () => {
-  console.log('alice connected')
+Alice.on('response', (res) => {
+  console.log('[ alice ] received response')
+  console.dir(res, { depth: null })
 })
 
-// Configure the Bob node.
-Bob.inbox.tag.on('pong', (msg) => {
-  console.log('received pong message:', msg.data)
-  cleanup()
+Alice.on('bounced', (event, err) => {
+  console.log('[ alice ] bounced event')
+  console.dir(event, { depth: null })
+  console.dir(err, { depth: null })
 })
 
-Bob.on('ready', () => {
-  console.log('bob connected')
-  Bob.publish({ tag: 'ping', data: 'ping!' }, Alice.pubkey)
+Alice.on('published', (event) => {
+  console.log('[ alice ] published event')
+  console.dir(event, { depth: null })
 })
 
-// Cleanup the demo.
-const cleanup = () => {
-  console.log('cleaning up...')
-  Alice.close()
-  Bob.close()
-  Relay.close()
-}
-
-// Start the demo.
-Relay.start().then(async () => {
-  console.log('relay started')
-  await Alice.connect()
-  await Bob.connect()
+Carol.on('request', (req) => {
+  console.log('[ carol ] sent request')
+  console.dir(req, { depth: null })
 })
+
+Carol.on('response', (res) => {
+  console.log('[ carol ] received response')
+  console.dir(res, { depth: null })
+})
+
+Carol.on('bounced', (event, err) => {
+  console.log('[ carol ] bounced event')
+  console.dir(event, { depth: null })
+  console.dir(err, { depth: null })
+})
+
+Carol.on('published', (event) => {
+  console.log('[ carol ] published event')
+  console.dir(event, { depth: null })
+})
+
+peers.on('confirmed', (session) => {
+  console.log('[ peers ] peer confirmed:', session)
+
+  Alice.request({ method: 'get_public_key' }, Carol.pubkey)
+})
+
+sessions.on('pending', (session) => {
+  console.log('[ sessions ] session pending:', session)
+})
+
+sessions.on('activated', (session) => {
+  console.log('[ sessions ] session activated:', session)
+})
+
+sessions.on('request', (req, session) => {
+  console.log('[ sessions ] session request:', req, session)
+})
+
+
+await Alice.subscribe(relays)
+await Carol.subscribe(relays)
+
+const invite = peers.invite(relays)
+
+console.log('alice invite:', invite)
+
+await sessions.connect(invite)

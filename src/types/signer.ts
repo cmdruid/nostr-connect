@@ -4,8 +4,8 @@ import { SignedEvent }   from './event.js'
 export type SignEventAPI = (event : EventTemplate) => Promise<SignedEvent>
 
 export interface SignerDeviceAPI {
-  get_methods   : () => Promise<Record<string, string>>
-  get_pubkey    : () => Promise<string>
+  get_methods   : () => string[]
+  get_pubkey    : () => string
   sign_event    : SignEventAPI
   nip04_encrypt : (pubkey : string, plaintext  : string) => Promise<string>
   nip04_decrypt : (pubkey : string, ciphertext : string) => Promise<string>

@@ -2,11 +2,9 @@
   "compilerOptions": {
     "baseUrl": "..",
     "paths": {
-      "@/*"                     : [ "src/*"             ],
-      "@/test/*"                : [ "test/src/*"        ],
-      "@cmdcode/nip46-sdk"      : [ "src/index.js"      ],
-      "@cmdcode/nip46-sdk/lib"  : [ "src/lib/index.js"  ],
-      "@cmdcode/nip46-sdk/util" : [ "src/util/index.js" ]
+      "@/*" : [ "./src/*" ],
+      "@/script/*" : [ "./test/script/*" ],
+      "@/test/*"   : [ "./test/src/*" ]
     },
     "module": "NodeNext",
     "target": "ESNext",
@@ -30,6 +28,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": [ "node_modules" ],
+  "exclude": [ "dist", "node_modules" ],
   "include": [ "**/*.ts" ]
 }

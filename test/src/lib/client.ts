@@ -1,25 +1,15 @@
 import { Buff } from '@cmdcode/buff'
 
-import { NostrClient, SimpleSigner } from '@cmdcode/nip46-sdk'
+import { NostrClient, SimpleSigner } from '@/index.js'
 
-import { ClientConfig, SignServer } from '@cmdcode/nip46-sdk'
+import type { ClientOptions } from '@/types/client.js'
 
-export async function create_client (
+export function create_client (
   name    : string,
-  relays  : string[],
-  options : Partial<ClientConfig> = {}
-) : Promise<NostrClient> {
+  options : ClientOptions = {}
+) : NostrClient {
   const seckey = Buff.str(name).digest.hex
   const signer = new SimpleSigner(seckey)
-  const pubkey = await signer.get_pubkey()
-  return new NostrClient(pubkey, relays, signer, options)
-}
-
-export async function create_server (
-  name    : string,
-  relays  : string[],
-  options : Partial<ClientConfig> = {}
-) : Promise<SignServer> {
-  const client = await create_client(name, relays, options)
-  return new SignServer(client)
+  const pubkey = signer.get_pubkey()
+  return new NostrClient(pubkey, signer, options)
 }

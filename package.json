@@ -37,13 +37,16 @@
     }
   },
   "scripts": {
-    "build": "./script/build.sh",
+    "build": "./scripts/build.sh",
     "demo:build": "cd demo && npm run build",
     "demo:dev": "cd demo && npm run dev",
     "loader": "tsx --tsconfig ./test/tsconfig.json",
+    "relay": "tsx test/scripts/relay.ts",
     "release": "npm test | faucet && npm run build",
-    "scratch": "npm run loader test/scratch.ts",
-    "test": "npm run loader test/tape.ts"
+    "scratch": "tsx test/scratch.ts",
+    "test": "tsx test/tape.ts",
+    "test:client": "tsx test/script/client.ts",
+    "test:signer": "tsx test/script/signer.ts"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.2",

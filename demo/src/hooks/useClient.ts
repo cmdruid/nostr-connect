@@ -1,14 +1,14 @@
-import { getPublicKey }   from 'nostr-tools'
-import { NIP46Client }    from '@/class/client.js'
-import { SignerDevice }   from '@/class/signer.js'
+import { getPublicKey } from 'nostr-tools'
+
+import { NostrClient, SimpleSigner, CONST, SessionManager } from '@/source'
+
 import { decrypt_secret } from '@/demo/lib/crypto.js'
 import { useLogs }        from '@/demo/context/logs.js'
 import { useStore }       from '@/demo/context/store.js'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
 import type {
-  AppStore,
   NodeStatus,
   NostrClientAPI,
   LogEntry,
@@ -17,19 +17,17 @@ import type {
 
 import type { RequestMessage, SessionToken } from '@/types/index.js'
 
+const SIGN_METHOD = CONST.SIGN_METHOD
+
 export function useClient () : NostrClientAPI {
   // Configure the client hook state.
-  const [ status, setStatus ] = useState<NodeStatus>('locked')
-  const [ client, setClient ] = useState<NIP46Client | null>(null)
+  const [ status,   setStatus  ] = useState<NodeStatus>('locked')
+  const [ _client,  setClient  ] = useState<NostrClient | null>(null)
+  const [ _session, setSession ] = useState<SessionManager | null>(null)
   
   // Configure the store and logs context.
   const store = useStore()
   const logs  = useLogs()
-  
-  // Only recreate client when core config changes.
-  const config_key = useMemo(() =>
-    `${store.data.encrypted}-${store.data.relays.map(r => r.url).join(',')}`
-  , [ store.data.encrypted, store.data.relays ])
 
   const lock = () => {
     setClient(null)
@@ -39,39 +37,50 @@ export function useClient () : NostrClientAPI {
   // Reset the client.
   const reset = () => {
     // If the client is not initialized, return early.
-    if (!client) return
+    if (!_client) return
     // Clear logs when resetting client state.
     logs.clearLogs()
     // Get the relay urls.
     const urls = store.data.relays.map(r => r.url)
     // Subscribe to the relays.
-    client.subscribe(urls)
+    _client.subscribe(urls)
   }
 
   const unlock = (password : string) => {
     // If the client is already initialized, return early.
-    if (client) return
+    if (_client) return
     // Clear logs when resetting client state.
     logs.clearLogs()
     // Get the store data.
     const { encrypted, relays, sessions } = store.data
+    console.log('relays', relays)
+    console.log('sessions', sessions)
     // Get the relay urls.
-    const urls = relays.map(r => r.url)
+    const urls = new Set([
+      ...relays.map(r => r.url),
+      ...sessions.flatMap(s => s.relays)
+    ])
+    console.log('urls', urls)
+    console.log('flat:', sessions.flatMap(s => s.relays))
     // If no encrypted secret is provided, return early.
     if (!encrypted) return
-    // If no relays are provided, return early.
-    if (relays.length === 0) return
     // Get the seckey from the encrypted secret.
     const seckey = decrypt_secret(encrypted, password)
     // Get the pubkey from the seckey.
     const pubkey = getPublicKey(seckey)
     // Create a new signer device.
-    const signer = new SignerDevice(seckey)
+    const signer = new SimpleSigner(seckey)
     // Create a new client.
-    const node = new NIP46Client(pubkey, signer, {
-      debug    : false,
-      relays   : urls,
-      sessions : sessions
+    const client = new NostrClient(pubkey, signer, {
+      debug  : false,
+      relays : Array.from(urls)
+    })
+    // Create a new session manager.
+    const session = new SessionManager(client, {
+      sessions,
+      debug   : false,
+      timeout : 10000,
+      verbose : false
     })
     // Handle the ready event.
     const handleReady = () => {
@@ -85,28 +94,28 @@ export function useClient () : NostrClientAPI {
 
     // Handle session changes.
     const handleSessionChange = () => {
-      const updated = node.session.active ?? []
+      const updated = session.active ?? []
       store.update({ sessions: updated })
     }
 
     // Handle request events.
     const handleRequest = async (
       message : RequestMessage,
-      session : SessionToken
+      session : SessionToken  
     ) => {
       // Get the methods from the signer.
-      const methods = await signer.get_methods()
+      const methods = signer.get_methods()
       // Get the session permissions.
       const perms   = session.perms ?? {}
       // Get the reject function.
-      const reject  = reject_handler(node, message)
+      const reject  = reject_handler(client, message)
       // If the method is not supported, return early.
-      if (!methods[message.method]) return reject('method not supported: ' + message.method)
+      if (!methods.includes(message.method)) return reject('method not supported: ' + message.method)
       // If the session does not have permissions, return early.
       if (!perms[message.method]) return reject('session does not have permissions: ' + message.method)
       // Try to handle the request.
       try {
-        if (message.method === methods.sign_event) {
+        if (message.method === SIGN_METHOD.SIGN_EVENT) {
           // Get the event permissions.
           const event_perms = perms.sign_event
           // If the event permissions are not an array, return early.
@@ -122,35 +131,35 @@ export function useClient () : NostrClientAPI {
           // Sign the event.
           const signed = await signer.sign_event(event)
           // Respond to the request.
-          node.respond(message.id, message.env.pubkey, JSON.stringify(signed))
+          client.respond(message.id, message.env.pubkey, JSON.stringify(signed))
         }
-        if (message.method === methods.nip04_decrypt) {
+        if (message.method === SIGN_METHOD.NIP04_DECRYPT) {
           const peer_pubkey = message.params.at(0)
           const ciphertext = message.params.at(1)
           if (!peer_pubkey || !ciphertext) return
           const decrypted = await signer.nip04_decrypt(peer_pubkey, ciphertext)
-          node.respond(message.id, message.env.pubkey, decrypted)
+          client.respond(message.id, message.env.pubkey, decrypted)
         }
-        if (message.method === methods.nip04_encrypt) {
+        if (message.method === SIGN_METHOD.NIP04_ENCRYPT) {
           const peer_pubkey = message.params.at(0)
           const plaintext = message.params.at(1)
           if (!peer_pubkey || !plaintext) return
           const encrypted = await signer.nip04_encrypt(peer_pubkey, plaintext)
-          node.respond(message.id, message.env.pubkey, encrypted)
+          client.respond(message.id, message.env.pubkey, encrypted)
         }
-        if (message.method === methods.nip44_decrypt) {
+        if (message.method === SIGN_METHOD.NIP44_DECRYPT) {
           const peer_pubkey = message.params.at(0)
           const ciphertext = message.params.at(1)
           if (!peer_pubkey || !ciphertext) return
           const decrypted = await signer.nip44_decrypt(peer_pubkey, ciphertext)
-          node.respond(message.id, message.env.pubkey, decrypted)
+          client.respond(message.id, message.env.pubkey, decrypted)
         }
-        if (message.method === methods.nip44_encrypt) {
+        if (message.method === SIGN_METHOD.NIP44_ENCRYPT) {
           const peer_pubkey = message.params.at(0)
           const plaintext = message.params.at(1)
           if (!peer_pubkey || !plaintext) return
           const encrypted = await signer.nip44_encrypt(peer_pubkey, plaintext)
-          node.respond(message.id, message.env.pubkey, encrypted)
+          client.respond(message.id, message.env.pubkey, encrypted)
         }
       } catch (error) {
         console.error('Error handling request:', error)
@@ -207,19 +216,26 @@ export function useClient () : NostrClientAPI {
     }
 
     // Attach all event listeners
-    node.on('ready',   handleReady)
-    node.on('closed',  handleClosed)
-    node.on('error',   handleError)
-    node.on('request', handleRequest)
-    node.on('*',       handleAllEvents)
-    node.session.on('activated', handleSessionChange)
-    node.session.on('revoked',   handleSessionChange)
-    node.session.on('updated',   handleSessionChange)
+    client.on('ready',   handleReady)
+    client.on('closed',  handleClosed)
+    client.on('error',   handleError)
+    client.on('*',       handleAllEvents)
 
-    // Start the connection
-    node.subscribe()
+    session.on('activated', handleSessionChange)
+    session.on('revoked',   handleSessionChange)
+    session.on('updated',   handleSessionChange)
+    session.on('request',   handleRequest)
+
+    if (client.relays.length > 0) {
+      client.subscribe()
+      setStatus('connecting')
+    } else {
+      setStatus('offline')
+    }
+
     // Set the client.
-    setClient(node)
+    setClient(client)
+    setSession(session)
   }
 
   // Lock the client when the encrypted secret changes.
@@ -229,18 +245,18 @@ export function useClient () : NostrClientAPI {
 
   // Subscribe to new relays when the relay list changes.
   useEffect(() => {
-    if (client) {
+    if (_client) {
       const urls = store.data.relays.map(r => r.url)
-      client.subscribe(urls)
+      _client.subscribe(urls)
     }
   }, [ store.data.relays ])
 
   // Return the client hook API.
-  return { ref : client, unlock, reset, lock, status }
+  return { client : _client, session : _session, unlock, reset, lock, status }
 }
 
 function reject_handler (
-  node : NIP46Client,
+  node : NostrClient,
   message : RequestMessage,
 ) {
   return (reason : string) => {

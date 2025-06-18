@@ -1,6 +1,3 @@
-
-import type { SessionToken } from './session.js'
-
 import type {
   RequestMessage,
   SignedMessage,
@@ -9,22 +6,14 @@ import type {
 
 import type { SignedEvent } from './event.js'
 
-export interface ClientOptions {
-  debug?           : boolean
-  relays?          : string[]
-  sessions?        : SessionToken[]
-  req_timeout?     : number
-  invite_timeout?  : number
-  pending_timeout? : number
-  verbose?         : boolean
+export interface ClientOptions extends Partial<ClientConfig> {
+  relays? : string[]
 }
 
 export interface ClientConfig {
-  debug           : boolean
-  req_timeout     : number
-  invite_timeout  : number
-  pending_timeout : number
-  verbose         : boolean
+  debug   : boolean
+  timeout : number
+  verbose : boolean
 }
 
 export interface PublishResponse {
@@ -38,15 +27,18 @@ export interface PublishedEvent extends PublishResponse {
 }
 
 export interface ClientEventMap extends Record<string, any> {
-  'bounced'    : [ event: SignedEvent, error: string ]
-  'closed'     : []
-  'debug'      : unknown[]
-  'error'      : unknown[]
-  'event'      : [ event: SignedEvent ]
-  'info'       : unknown[]
-  'message'    : [ message: SignedMessage ]
-  'ready'      : []
-  'request'    : [ message: RequestMessage, session: SessionToken ]
-  'response'   : [ message: ResponseMessage ]
-  'subscribed' : [ relays: string[] ]
+  'bounced'      : [ event: SignedEvent, error: string ]
+  'closed'       : []
+  'debug'        : unknown[]
+  'disconnected' : []
+  'error'        : unknown[]
+  'event'        : [ event: SignedEvent ]
+  'info'         : unknown[]
+  'message'      : [ message: SignedMessage ]
+  'ready'        : []
+  'request'      : [ message: RequestMessage ]
+  'response'     : [ message: ResponseMessage ]
+  'subscribed'   : []
+  'unsubscribed' : []
+  'published'    : [ response: PublishedEvent ]
 }

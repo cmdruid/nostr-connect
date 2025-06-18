@@ -1,11 +1,11 @@
+import { Buff }           from '@cmdcode/buff'
 import { SimplePool }     from 'nostr-tools'
 import { EventEmitter }   from '@/class/emitter.js'
-import { SessionManager } from '@/class/session.js'
 import { gen_message_id } from '@/lib/util.js'
 
-import { EVENT_KIND, REQ_METHOD }       from '@/const.js'
-import { parse_config, verify_options } from '@/lib/validate.js'
-import { Assert, now, parse_error }     from '@/util/index.js'
+import { DOMAIN_TAG, EVENT_KIND, REQ_METHOD } from '@/const.js'
+import { parse_config, verify_options }       from '@/lib/validate.js'
+import { Assert, now, parse_error }           from '@/util/index.js'
 
 import {
   create_envelope,
@@ -36,30 +36,28 @@ import type {
 } from '@/types/index.js'
 
 /**
- * Default configuration settings for a Nostr node.
+ * Default configuration settings for a Nostr Client.
  */
 const DEFAULT_CONFIG : () => ClientConfig = () => {
   return {
-    debug           : false,
-    req_timeout     : 5000,
-    invite_timeout  : 60,
-    pending_timeout : 10,
-    verbose         : true
+    debug   : false,
+    timeout : 5000,
+    verbose : true
   }
 }
 
 const LOG_PREFIX = '[ connect ]'
 
-export class SessionClient extends EventEmitter <ClientEventMap> {
+export class NostrClient extends EventEmitter <ClientEventMap> {
 
-  private readonly _config   : ClientConfig
-  private readonly _pool     : SimplePool
-  private readonly _pubkey   : string
-  private readonly _session  : SessionManager
-  private readonly _signer   : SignerDeviceAPI
+  private readonly _config : ClientConfig
+  private readonly _pool   : SimplePool
+  private readonly _pubkey : string
+  private readonly _relays : Set<string> = new Set()
+  private readonly _signer : SignerDeviceAPI
+  private readonly _sub_id : string
 
   private _ready  : boolean  = false
-  private _relays : string[] = []
 
   /**
    * Creates a new instance.
@@ -72,55 +70,72 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     signer  : SignerDeviceAPI,
     options : ClientOptions = {}
   ) {
-    // Verify the client options.
-    verify_options(options)
     // Create the event emitter.
     super()
+    // Verify the client options.
+    verify_options(options)
     // Set the client public key and signer.
     this._pubkey = pubkey
     this._signer = signer
     // Set the client configuration and pool
     this._config  = get_node_config(options)
+    // Initialize the pool.
     this._pool    = new SimplePool()
-    this._relays  = options.relays ?? []
-    this._session = new SessionManager(this, options.sessions ?? [])
+    // Set the relays.
+    this._relays  = new Set(options.relays ?? [])
+    // Set the subscription ID.
+    this._sub_id  = get_sub_id(pubkey)
   }
 
-  get config() : ClientConfig {
+  get config () : ClientConfig {
     return this._config
   }
 
-  get is_ready() : boolean {
+  get is_ready () : boolean {
     return this._ready
   }
 
-  get log() {
+  get pubkey () : string {
+    return this._pubkey
+  }
+
+  get relays () : string[] {
+    return Array.from(this._relays)
+  }
+
+  get status () {
+    return this._pool.listConnectionStatus()
+  }
+
+  private get log () {
     return {
       debug : (...args : any[]) => this.config.debug   && console.log(LOG_PREFIX, ...args),
       info  : (...args : any[]) => this.config.verbose && console.log(LOG_PREFIX, ...args)
     }
   }
 
-  get pubkey() : string {
-    return this._pubkey
+  private _close () : void {
+    // Set the client to not ready.
+    this._ready = false
+    // Log the disconnected event.
+    this.log.info('subscription closed')
+    // Emit the unsubscribed event.
+    this.emit('unsubscribed')
   }
 
-  get relays () : string[] {
-    let _relays = new Set(this._relays)
-    for (const session of this._session.active) {
-      for (const relay of session.relays) {
-        _relays.add(relay)
-      }
-    }
-    return Array.from(_relays)
-  }
-
-  get session() : SessionManager {
-    return this._session
-  }
-
-  get signer() : SignerDeviceAPI {
-    return this._signer
+  private _eose () : void {
+    // Log the subscription.
+    this.log.info('subscription updated')
+    // Emit the subscribed event.
+    this.emit('subscribed')
+    // If the client is already ready, return.
+    if (this._ready) return
+    // Set the client to ready.
+    this._ready = true
+    // Log the ready event.
+    this.log.info('client connected')
+    // Emit the ready event.
+    this.emit('ready')
   }
 
   private async _handler (event : SignedEvent) : Promise<void> {
@@ -142,19 +157,11 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
         if (message.method === REQ_METHOD.PING) {
           // Send a pong response.
           this._pong(message)
-        // If the message is a pubkey request,
-        } else if (this._session.methods.includes(message.method)) {
-          // Handle the get pubkey message.
-          this._session.handler(message)
         } else {
-          // Get the session token.
-          const session = this._session.get(message.env.pubkey)
-          // If the session token is not found, return early.
-          if (!session) return
           // Log the request.
           this.log.info('received request for method:', message.method)
-          // Emit the message to client emitter.
-          this.emit('request', message, session)
+          // Emit the request to the client emitter.
+          this.emit('request', message)
         }
       } else if (type === 'accept' || type === 'reject') {
         // Emit the message to client emitter.
@@ -168,30 +175,15 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     }
   }
 
-  private _eose (relays : string[]) : void {
-    // Log the subscription.
-    this.log.info('subscribed to relays:', relays)
-    // Emit the subscribed event.
-    this.emit('subscribed', relays)
-    // If the client is already ready, return.
-    if (this._ready) return
-    // Set the client to ready.
-    this._ready = true
-    // Log the ready event.
-    this.log.info('connected and subscribed')
-    // Emit the ready event.
-    this.emit('ready')
-  }
-
   private async _pong (message : RequestMessage) : Promise<PublishedEvent> {
     // Assert the message is a ping.
     Assert.ok(message.method === 'ping', 'invalid ping message')
     // Create the pong message template.
-    const tmpl  = { result: 'pong', id: message.id }
+    const tmpl = { result: 'pong', id: message.id }
     // Log the pong message.
     this.log.debug('sending pong:', tmpl, message.env.pubkey)
     // Send the pong message.
-    return this._send(tmpl, message.env.pubkey)
+    return this.send(tmpl, message.env.pubkey)
   }
 
   async _notarize (
@@ -208,50 +200,29 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     return create_envelope(config, payload, recipient, this._signer)
   }
 
-  private async _send (
-    template  : MessageTemplate,
-    recipient : string,
-    relays?   : string[]
-  ) : Promise<PublishedEvent> {
-    // Combine the relays.
-    const _relays  = combine_relays(this.relays, relays ?? [])
-    // Create the event.
-    const event    = await this._notarize(template, recipient)
-    // Collect the publication promises.
-    const promises = this._pool.publish(_relays, event)
-    // Log the publication.
-    this.log.debug('publishing to relays:', promises)
-    // Wait for the publication promises to settle.
-    const settled  = await Promise.allSettled(promises)
-    // Parse the receipts.
-    const receipts = parse_receipts(settled)
-    // Create the response.
-    const response = { ...receipts, event }
-    // Emit the event to the client emitter.
-    this.emit('publish', response)
-    // Return the response.
-    return response
-  }
-
-  async _subscribe (relays? : string[]) : Promise<void> {
-    // Combine the relays.
-    this._relays = combine_relays(this.relays, relays ?? [])
+  _subscribe () {
+    // Assert that there are relays to subscribe to.
+    Assert.ok(this.relays.length > 0, 'no relays to subscribe to')
     // Get the filter configuration.
-    const filter = { kinds : [ EVENT_KIND ], since : now() }
+    const filter = { kinds : [ EVENT_KIND ], since : now(), '#p' : [ this.pubkey ] }
     // Create the subscription parameters.
     const params : SubscribeManyParams = {
+      id      : this._sub_id,
       onevent : this._handler.bind(this),
-      oneose  : this._eose.bind(this, this._relays)
+      oneose  : this._eose.bind(this),
+      onclose : this._close.bind(this)
     }
     // Subscribe to the relays.
-    this._pool.subscribe(this._relays, filter, params)
+    this._pool.subscribe(this.relays, filter, params)
   }
 
   async connect (relays? : string[]) : Promise<void> {
     // Set the timeout.
-    const timeout = this.config.req_timeout
+    const timeout = this.config.timeout
     // Subscribe to the relays.
-    this._subscribe(relays)
+    this.subscribe(relays)
+    // If the client is ready, return.
+    if (this._ready) return
     // Return a promise to resolve when the subscription is established.
     return new Promise((resolve, reject) => {
       // Set the rejection timer.
@@ -262,21 +233,22 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
   }
 
   /**
-   * Gracefully closes all relay connections.
+   * Closes all relay connections.
    * 
    * @emits close  When all connections are terminated
    */
   async close () : Promise<void> {
-    // If the client is not ready, return.
-    if (!this._ready) return
-    // If the pool has a close method, close the relays.
-    if (this._pool.close) this._pool.close(this.relays)
-    // Set the client to not ready.
-    this._ready = false
+    // If the client is ready,.
+    if (this._ready) {
+      // Destroy the pool.
+      this._pool.destroy()
+      // Set the client to not ready.
+      this._ready = false
+    }
     // Log the close event.
     this.log.info('connection closed')
     // Emit the close event.
-    this.emit('close')
+    this.emit('closed')
   }
 
   /**
@@ -299,24 +271,23 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
    * Sends a request to a recipient.
    * @param message      The request message.
    * @param recipient    The recipient of the request.
-   * @param req_timeout  The timeout for the request.
    * @returns            The response message.
    */
   async request (
-    message      : Partial<RequestTemplate>,
-    recipient    : string,
-    relays?      : string[]
+    template  : Partial<RequestTemplate>,
+    recipient : string,
+    relays?   : string[]
   ) : Promise<ResponseMessage> {
-    // Create the request template.
-    const config   = { ...message, id: message.id ?? gen_message_id() }
-    // Create the request template.
-    const tmpl     = create_request_template(config)
     // Set the timeout.
-    const timeout  = this.config.req_timeout
+    const timeout = this.config.timeout
+    // Create the request template.
+    const config  = { ...template, id: template.id ?? gen_message_id() }
+    // Create the request template.
+    const tmpl    = create_request_template(config)
     // Create the promise to resolve the response.
-    const receipt  = new Promise<ResponseMessage>((resolve, reject) => {
+    const receipt = new Promise<ResponseMessage>((resolve, reject) => {
       // Set the expiration timer.
-      const timer  = setTimeout(() => reject('timeout'), timeout)
+      const timer = setTimeout(() => reject('timeout'), timeout)
       // Wait for the response.
       this.within('response', (msg : ResponseMessage) => {
         // If the message ID matches the request ID,
@@ -331,7 +302,7 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     this.log.info('sending request to:', recipient)
     this.log.debug('request:', tmpl)
     // Send the request.
-    this._send(tmpl, recipient, relays)
+    this.send(tmpl, recipient, relays)
     // Return the promise to resolve the response.
     return receipt
   }
@@ -355,7 +326,7 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     this.log.info('sending response to:', pubkey)
     this.log.debug('response:', tmpl)
     // Send the response.
-    return this._send(tmpl, pubkey, relays)
+    return this.send(tmpl, pubkey, relays)
   }
 
   /**
@@ -366,9 +337,9 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
    * @returns        The published event.
    */
   async reject (
-    id     : string,
-    pubkey : string,
-    reason : string,
+    id      : string,
+    pubkey  : string,
+    reason  : string,
     relays? : string[]
   ) : Promise<PublishedEvent> {
     // Create the rejection template.
@@ -377,25 +348,63 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
     this.log.info('sending rejection to:', pubkey)
     this.log.debug('rejection:', tmpl)
     // Send the rejection.
-    return this._send(tmpl, pubkey, relays)
+    return this.send(tmpl, pubkey, relays)
+  }
+
+  private async send (
+    template  : MessageTemplate,
+    recipient : string,
+    relays    : string[] = this.relays
+  ) : Promise<PublishedEvent> {
+    // Assert that the client is ready.
+    Assert.ok(this.is_ready, 'client is not connected')
+    // Subscribe to the relays if needed.
+    await this.subscribe(relays)
+    // Create the event.
+    const event    = await this._notarize(template, recipient)
+    // Collect the publication promises.
+    const promises = this._pool.publish(relays, event)
+    // Log the publication.
+    this.log.info('sending to:', recipient)
+    this.log.debug('template:', template)
+    this.log.debug('event:',    event)
+    // Wait for the publication promises to settle.
+    const settled  = await Promise.allSettled(promises)
+    // Parse the receipts.
+    const receipts = parse_receipts(settled)
+    // Create the response.
+    const response = { ...receipts, event }
+    // Emit the event to the client emitter.
+    this.emit('published', response)
+    // Return the response.
+    return response
   }
 
   /**
    * Subscribes to a list of relays.
    * @param relays  The list of relays to subscribe to.
-   * @returns       A promise to resolve when the subscription is established.
+   * @returns       A promise to resolve with the subscription ID.
    */
-  async subscribe (relays? : string[]) : Promise<void> {
+  async subscribe (relays : string[] = []) : Promise<void> {
+    // If the client already has the relays and is ready, return.
+    if (has_relays(this, relays) && this._ready) return
+    // Update the relays.
+    relays.forEach(relay => this._relays.add(relay))
     // Set the timeout.
-    const timeout = this.config.req_timeout
-    // Subscribe to the relays.
-    await this._subscribe(relays)
+    const timeout = this.config.timeout
+    // Update the subscription.
+    this._subscribe()
     // Return a promise to resolve when the subscription is established.
     return new Promise((resolve, reject) => {
       // Set the rejection timer.
       const timer = setTimeout(() => reject('timeout'), timeout)
       // If the client is ready, resolve the promise.
-      this.within('subscribed', () => { clearTimeout(timer); resolve() }, timeout)
+      this.within('subscribed', () => {
+        // Clear the timeout.
+        clearTimeout(timer)
+        // Resolve the promise.
+        resolve()
+      }, timeout)
     })
   }
 }
@@ -406,9 +415,15 @@ export class SessionClient extends EventEmitter <ClientEventMap> {
  * @returns        Complete node configuration
  */
 function get_node_config (
-  opt : Partial<ClientOptions> = {}
+  opt : ClientOptions = {}
 ) : ClientConfig {
   return parse_config({ ...DEFAULT_CONFIG(), ...opt })
+}
+
+function get_sub_id (pubkey : string) : string {
+  const tag_bytes = Buff.str(DOMAIN_TAG)
+  const pk_bytes  = Buff.hex(pubkey)
+  return Buff.join([ tag_bytes, pk_bytes ]).digest.hex
 }
 
 /**
@@ -430,13 +445,6 @@ function parse_receipts (
   return { acks, fails, ok: acks > 0 }
 }
 
-function combine_relays (
-  curr_relays : string[],
-  new_relays  : string[]
-) : string[] {
-  let _relays = new Set(curr_relays)
-  for (const relay of new_relays) _relays.add(relay)
-  return Array.from(_relays)
-    .map(e => e.trim())
-    .map(e => e.endsWith('/') ? e.slice(0, -1) : e)
+function has_relays (client : NostrClient, relays : string[] = []) : boolean {
+  return relays.every(relay => client.relays.includes(relay))
 }

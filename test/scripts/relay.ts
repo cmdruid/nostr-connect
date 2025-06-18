@@ -1,11 +1,12 @@
 import { z }                          from 'zod'
 import { schnorr }                    from '@noble/curves/secp256k1'
-import { sha256 }                     from '@noble/hashes/sha256'
+import { sha256 }                     from '@noble/hashes/sha2'
 import { EventEmitter }               from 'node:events'
 import { WebSocket, WebSocketServer } from 'ws'
 
 /* ================ [ Configuration ] ================ */
 
+const HOST    = 'ws://localhost'
 const DEBUG   = process.env['DEBUG']   === 'true'
 const VERBOSE = process.env['VERBOSE'] === 'true' || DEBUG
 
@@ -99,6 +100,10 @@ export class NostrRelay {
 
   get subs () {
     return this._subs
+  }
+
+  get url () {
+    return `${HOST}:${this._port}`
   }
 
   get wss () {
@@ -364,8 +369,22 @@ function match_tags (
 
 function verify_event (event : SignedEvent) {
   const { content, created_at, id, kind, pubkey, sig, tags } = event
-  const pimg = JSON.stringify([ 0, pubkey, created_at, kind, tags, content ])
-  const dig  = Buffer.from(sha256(pimg)).toString('hex')
-  if (dig !== id) return false
+  const preimg = JSON.stringify([ 0, pubkey, created_at, kind, tags, content ])
+  const digest = Buffer.from(sha256(preimg)).toString('hex')
+  if (digest !== id) return false
   return schnorr.verify(sig, id, pubkey)
+}
+
+/**
+ * If this file is being executed directly, start the relay.
+ */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port  = parseInt(process.argv[2] ?? '8080')
+  const relay = new NostrRelay(port)
+  relay.start().then(() => {
+    console.log('relay started on', relay.url)
+  }).catch(err => {
+    console.error('failed to start relay:', err)
+    process.exit(1)
+  })
 }

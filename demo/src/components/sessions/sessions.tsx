@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import '@/styles/sessions.css'
 
 import { SessionToken, PermissionMap } from '@/types/index.js'
-import { TokenEncoder } from '@/index.js'
+import { ConnectToken } from '@/index.js'
 import { useClientCtx } from '@/demo/context/client.js'
 import { PermissionsDropdown } from './permissions.js'
 
 export function Sessions() {
-  const client = useClientCtx()
+  const ctx = useClientCtx()
 
   const [activeSessions, setActiveSessions]   = useState<SessionToken[]>([])
   const [pendingSessions, setPendingSessions] = useState<SessionToken[]>([])
@@ -21,38 +21,36 @@ export function Sessions() {
   // Update sessions when they change
   useEffect(() => {
     const updateSessions = () => {
-      setActiveSessions(client.ref?.session?.active   || [])
-      setPendingSessions(client.ref?.session?.pending || [])
+      setActiveSessions(ctx.session?.active   || [])
+      setPendingSessions(ctx.session?.pending || [])
     }
 
     // Initial update
     updateSessions()
 
     // Listen for session changes
-    client.ref?.on('activate', updateSessions)
-    client.ref?.on('register', updateSessions)
-    client.ref?.on('updated', updateSessions)
+    ctx.session?.on('activated', updateSessions)
+    ctx.session?.on('pending',   updateSessions)
+    ctx.session?.on('updated',   updateSessions)
+    ctx.session?.on('revoked',   updateSessions)
 
     return () => {
-      client.ref?.off('activate', updateSessions)
-      client.ref?.off('register', updateSessions)
-      client.ref?.off('updated', updateSessions)
+      ctx.session?.off('activated', updateSessions)
+      ctx.session?.off('pending',   updateSessions)
+      ctx.session?.off('updated',   updateSessions)
+      ctx.session?.off('revoked',   updateSessions)
     }
-  }, [ client ])
+  }, [ ctx.session ])
 
   const handleRevokeSession = (pubkey: string) => {
-    client.ref?.session.revoke(pubkey)
-  }
-
-  const handleCancelSession = (pubkey: string) => {
-    client.ref?.session.cancel(pubkey)
+    ctx.session?.revoke(pubkey)
   }
 
   const handleActivateSession = async () => {
     try {
       setError(null)
-      const token = TokenEncoder.connect.decode(connectString)
-      await client.ref?.session.register(token)
+      const token = ConnectToken.decode(connectString)
+      await ctx.session?.connect(token)
       setConnectString('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to activate session')
@@ -106,7 +104,7 @@ export function Sessions() {
         perms: editingPermissions[pubkey] || {}
       }
 
-      await client.ref?.session.update(updatedSession)
+      await ctx.session?.update(updatedSession)
       
       // Close the dropdown after successful update
       const newExpanded = new Set(expandedPermissions)
@@ -213,21 +211,12 @@ export function Sessions() {
                   )}
                   {/* Revoke/Cancel button in bottom-right */}
                   <div className="session-card-actions-bottom">
-                    {session.status === 'active' ? (
-                      <button
-                        onClick={() => handleRevokeSession(session.pubkey)}
-                        className="session-revoke-btn"
-                      >
-                        Revoke
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleCancelSession(session.pubkey)}
-                        className="session-cancel-btn"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleRevokeSession(session.pubkey)}
+                      className="session-revoke-btn"
+                    >
+                      Revoke
+                    </button>
                   </div>
                 </div>
               )

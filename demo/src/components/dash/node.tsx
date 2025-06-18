@@ -14,17 +14,17 @@ function truncateHex(hex: string) {
 }
 
 export function NodeInfo () {
-  const client = useClientCtx()
+  const ctx = useClientCtx()
   const [ password, setPassword ] = useState('')
   const [ error, setError ]       = useState<string | null>(null)
   const [ showHex, setShowHex ]   = useState(false)
   const [ copySuccess, setCopySuccess ] = useState(false)
 
-  const npub = client.ref
-    ? nip19.npubEncode(client.ref.pubkey)
+  const npub = ctx.client
+    ? nip19.npubEncode(ctx.client.pubkey)
     : 'unknown'
 
-  const hex = client.ref?.pubkey || 'unknown'
+  const hex = ctx.client?.pubkey || 'unknown'
 
   const handleCopy = async () => {
     const valueToCopy = showHex ? hex : npub
@@ -44,7 +44,7 @@ export function NodeInfo () {
       return
     }
     try {
-      client.unlock(password)
+      ctx.unlock(password)
       setError(null)
       setPassword('')
     } catch (err) {
@@ -53,7 +53,7 @@ export function NodeInfo () {
   }
 
   // If client is locked, show locked state
-  if (client.status === 'locked') {
+  if (ctx.status === 'locked') {
     return (
       <div className="dashboard-container">
         <h2 className="section-header">Node Info</h2>
@@ -89,7 +89,7 @@ export function NodeInfo () {
       <h2 className="section-header">Node Info</h2>
       <div className="node-inline-row locked">
         <span className="node-label">Status</span>
-        <span className={`status-pill ${client.status}`}>{client.status}</span>
+        <span className={`status-pill ${ctx.status}`}>{ctx.status}</span>
       </div>
       <div className="node-inline-row">
         <span className="node-label">Pubkey</span>
@@ -112,7 +112,7 @@ export function NodeInfo () {
       </div>
       <button 
         className="button"
-        onClick={() => client.reset()}
+        onClick={() => ctx.reset()}
       >
         Reset Node
       </button>

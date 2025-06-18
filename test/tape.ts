@@ -1,34 +1,30 @@
 import tape from 'tape'
 
-import { sleep }      from '@/util/helpers.js'
-import { NostrRelay } from './src/lib/relay.js'
+import { sleep }         from '@cmdcode/nostr-connect/util'
+import { NostrRelay }    from 'test/scripts/relay.js'
+import { create_client } from '@/test/lib/client.js'
 
-import {
-  create_client,
-  create_server
-} from './src/lib/client.js'
+import type { TestContext } from '@/test/types.js'
 
-import type { TestContext } from './src/types.js'
+import ping_test   from '@/test/case/ping.test.js'
+import pubkey_test from '@/test/case/pubkey.test.js'
+import sign_test   from '@/test/case/sign.test.js'
 
-import ping_test   from './src/case/ping.test.js'
-import pubkey_test from './src/case/pubkey.test.js'
-import sign_test   from './src/case/sign.test.js'
 
-const RELAYS  = [ 'ws://localhost:8002' ]
 
-tape('Nostr NIP-46 Test Suite', async t => {
+tape('nostr-connect test suite', async t => {
 
-  const client = await create_client('client', RELAYS)
-  const server = await create_server('server', RELAYS)
-
-  const relay = new NostrRelay(8002)
+  const client = create_client('alice')
+  const signer = create_client('carol')
+  const relays = [ 'ws://localhost:8080' ]
+  const server = new NostrRelay(8080)
   
-  const ctx : TestContext = { client, server, relays: RELAYS, tape: t }
+  const ctx : TestContext = { client, signer, relays, tape: t }
 
   t.test('starting relay and nodes', async t => {
-    await relay.start()
-    await client.connect()
-    await server.client.connect()
+    await server.start()
+    await client.connect(relays)
+    await signer.connect(relays)
     t.pass('relay and nodes started')
   })
 
@@ -40,8 +36,8 @@ tape('Nostr NIP-46 Test Suite', async t => {
   t.test('stopping relay and nodes', async t => {
     await sleep(1000) 
     await client.close()
-    await server.client.close()
-    relay.close()
+    await signer.close()
+    server.close()
     t.pass('relay and nodes stopped')
   })
 })

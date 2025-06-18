@@ -1,14 +1,15 @@
-import type { NIP46Client } from '@/class/client'
+import type { NostrClient, SessionManager } from '@/source'
 
 export type LogType    = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
-export type NodeStatus = 'online' | 'offline' | 'locked'
+export type NodeStatus = 'online' | 'offline' | 'locked' | 'connecting'
 
 export interface NostrClientAPI {
-  ref    : NIP46Client | null
-  lock   : () => void
-  unlock : (password : string) => void
-  reset  : () => void
-  status : NodeStatus
+  client  : NostrClient | null
+  session : SessionManager | null
+  lock    : () => void
+  unlock  : (password : string) => void
+  reset   : () => void
+  status  : NodeStatus
 }
 
 export interface LogEntry {
