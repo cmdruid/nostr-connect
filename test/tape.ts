@@ -1,7 +1,7 @@
 import tape from 'tape'
 
 import { sleep }         from '@cmdcode/nostr-connect/util'
-import { NostrRelay }    from 'test/scripts/relay.js'
+import { NostrRelay }    from '@/script/relay.js'
 import { create_client } from '@/test/lib/client.js'
 
 import type { TestContext } from '@/test/types.js'

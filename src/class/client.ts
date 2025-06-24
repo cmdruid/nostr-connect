@@ -52,7 +52,6 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
 
   private readonly _config : ClientConfig
   private readonly _pool   : SimplePool
-  private readonly _pubkey : string
   private readonly _relays : Set<string> = new Set()
   private readonly _signer : SignerDeviceAPI
   private readonly _sub_id : string
@@ -61,12 +60,10 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
 
   /**
    * Creates a new instance.
-   * @param pubkey   The public key of the client.
    * @param signer   The signer device API.
    * @param options  Optional configuration parameters
    */
   constructor (
-    pubkey  : string,
     signer  : SignerDeviceAPI,
     options : ClientOptions = {}
   ) {
@@ -74,8 +71,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     super()
     // Verify the client options.
     verify_options(options)
-    // Set the client public key and signer.
-    this._pubkey = pubkey
+    // Set the client signer.
     this._signer = signer
     // Set the client configuration and pool
     this._config  = get_node_config(options)
@@ -84,7 +80,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Set the relays.
     this._relays  = new Set(options.relays ?? [])
     // Set the subscription ID.
-    this._sub_id  = get_sub_id(pubkey)
+    this._sub_id  = get_sub_id(this.pubkey)
   }
 
   get config () : ClientConfig {
@@ -96,7 +92,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   }
 
   get pubkey () : string {
-    return this._pubkey
+    return this._signer.get_pubkey()
   }
 
   get relays () : string[] {

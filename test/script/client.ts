@@ -12,8 +12,7 @@ const relays = [ 'ws://localhost:8080' ]
 
 const seckey = Buff.str(name).digest.hex
 const signer = new SimpleSigner(seckey)
-const pubkey = signer.get_pubkey()
-const client = new NostrClient(pubkey, signer)
+const client = new NostrClient(signer)
 const peers  = new PeerManager(client, { verbose: false })
 
 client.on('request', (req) => {
