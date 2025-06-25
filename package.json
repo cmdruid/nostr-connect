@@ -37,7 +37,7 @@
     "demo:dev": "cd demo && npm run dev",
     "loader": "tsx --tsconfig ./test/tsconfig.json",
     "relay": "tsx test/script/relay.ts",
-    "package": "npm test | faucet && npm run build",
+    "pkg": "npm test | faucet && npm run build",
     "release": "./script/release.sh",
     "scratch": "tsx test/scratch.ts",
     "test": "tsx test/tape.ts",

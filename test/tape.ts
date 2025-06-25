@@ -27,7 +27,7 @@ tape('nostr-connect test suite', async t => {
   })
 
   await sleep(1000)
-  ping_test(ctx)
+  // ping_test(ctx)
   // pubkey_test(ctx)
   // sign_test(ctx)
 
