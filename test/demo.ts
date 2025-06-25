@@ -1,6 +1,6 @@
 import { PeerManager, SessionManager } from '@/index.js'
 
-import { create_client } from '@/test/lib/client.js'
+import { create_client } from '@test/lib/client.js'
 
 // Create the actors.
 const Alice = create_client('alice')

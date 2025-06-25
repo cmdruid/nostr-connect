@@ -1,6 +1,6 @@
 
 import { REQ_METHOD }  from '@/const.js'
-import { parse_error } from '@/util/helpers.js'
+import { parse_error } from '@vbyte/micro-lib/util'
 
 import type { TestContext } from '../types.js'
 
@@ -11,11 +11,11 @@ import type { TestContext } from '../types.js'
  * @param ctx - Test context containing nodes and tape instance
  */
 export default function (ctx : TestContext) {
-  const { client, server, tape } = ctx
+  const { client, signer, tape } = ctx
 
-  server.on('request', (server, msg) => {
+  signer.on('request', (signer, msg) => {
     if (msg.method === REQ_METHOD.SIGN_EVENT) {
-      server.api.sign_event(msg)
+      signer.sign_event(msg)
     }
   })
 

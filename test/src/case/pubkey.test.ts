@@ -1,5 +1,5 @@
 import { REQ_METHOD }  from '@/const.js'
-import { parse_error } from '@/util/helpers.js'
+import { parse_error } from '@vbyte/micro-lib/util'
 
 import type { TestContext } from '../types.js'
 
@@ -10,22 +10,22 @@ import type { TestContext } from '../types.js'
  * @param ctx - Test context containing nodes and tape instance
  */
 export default function (ctx : TestContext) {
-  const { client, server, tape } = ctx
+  const { client, signer, tape } = ctx
 
-  server.on('*', (event, ...args) => {
+  signer.on('*', (event, ...args) => {
     console.log('*', event, ...args)
   })
 
-  server.on('request', (server, msg) => {
+  signer.on('request', (signer, msg) => {
     console.log('request', msg)
     if (msg.method === REQ_METHOD.GET_PUBKEY) {
-      server.api.get_pubkey(msg)
+      signer.api.get_pubkey(msg)
     }
   })
 
   tape.test('get_pubkey test', async t => {
     try {
-      const res = await client.api.get_pubkey(server.pubkey)
+      const res = await client.api.get_pubkey(signer.pubkey)
       if (res.type !== 'accept') {
         t.fail('get_pubkey failed')
       } else {

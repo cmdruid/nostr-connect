@@ -1,4 +1,4 @@
-import { parse_error } from '@/util/helpers.js'
+import { parse_error } from '@vbyte/micro-lib/util'
 import { get_node }    from '../lib/client.js'
 
 import type { TestContext } from '../types.js'

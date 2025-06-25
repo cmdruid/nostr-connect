@@ -1,4 +1,4 @@
-import { parse_error } from '@/util/helpers.js'
+import { parse_error } from '@vbyte/micro-lib/util'
 
 import type { TestContext } from '../types.js'
 
@@ -9,11 +9,11 @@ import type { TestContext } from '../types.js'
  * @param ctx - Test context containing nodes and tape instance
  */
 export default function (ctx : TestContext) {
-  const { client, server, tape } = ctx
+  const { client, signer,tape } = ctx
 
   tape.test('ping test', async t => {
     try {
-      const res = await client.ping(server.pubkey)
+      const res = await client.ping(signer.pubkey)
       if (!res) {
         t.fail('ping failed')
       } else {

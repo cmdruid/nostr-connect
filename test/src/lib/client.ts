@@ -1,4 +1,5 @@
-import { Buff } from '@cmdcode/buff'
+import { Buff }   from '@vbyte/buff'
+import { sha256 } from '@vbyte/micro-lib/hash'
 
 import { NostrClient, SimpleSigner } from '@/index.js'
 
@@ -8,8 +9,7 @@ export function create_client (
   name    : string,
   options : ClientOptions = {}
 ) : NostrClient {
-  const seckey = Buff.str(name).digest.hex
+  const seckey = sha256(Buff.str(name)).hex
   const signer = new SimpleSigner(seckey)
-  const pubkey = signer.get_pubkey()
-  return new NostrClient(pubkey, signer, options)
+  return new NostrClient(signer, options)
 }

@@ -3,8 +3,9 @@
     "baseUrl": "..",
     "paths": {
       "@/*" : [ "./src/*" ],
-      "@/script/*" : [ "./test/script/*" ],
-      "@/test/*"   : [ "./test/src/*" ]
+      "@dist/*"   : [ "./dist/*" ],
+      "@script/*" : [ "./test/script/*" ],
+      "@test/*"   : [ "./test/src/*" ]
     },
     "module": "NodeNext",
     "target": "ESNext",

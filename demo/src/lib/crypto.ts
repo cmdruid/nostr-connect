@@ -1,9 +1,10 @@
-import { Buff }   from '@cmdcode/buff'
+import { Buff }   from '@vbyte/buff'
 import { nip19 }  from 'nostr-tools'
 import { gcm }    from '@noble/ciphers/aes'
 import { pbkdf2 } from '@noble/hashes/pbkdf2'
 import { sha256 } from '@noble/hashes/sha2' 
-import { Assert } from '@/util/index.js'
+import { Assert } from '@vbyte/micro-lib/assert'
+import { B64url } from '@vbyte/micro-lib/encode'
 
 const PKDF_OPT = { c: 100000, dkLen: 32 }
 
@@ -49,7 +50,7 @@ export function encrypt_secret (
   const vector  = Buff.random(24)
   const enc_key = create_encryption_key(password, vector)
   const payload = gcm(enc_key, vector).encrypt(sbytes)
-  return new Buff(payload).b64url + '?iv=' + vector.b64url
+  return B64url.encode(new Buff(payload)) + '?iv=' + B64url.encode(vector)
 }
 
 export function decrypt_secret (
@@ -58,8 +59,8 @@ export function decrypt_secret (
 ) : Uint8Array {
   Assert.ok(content.includes('?iv='), 'encrypted content must include iv')
   const [ payload, iv ] = content.split('?iv=')
-  const pbytes  = Buff.b64url(payload)
-  const vector  = Buff.b64url(iv)
+  const pbytes  = B64url.decode(payload)
+  const vector  = B64url.decode(iv)
   const enc_key = create_encryption_key(password, vector)
   const seckey  = gcm(enc_key, vector).decrypt(pbytes)
   return new Buff(seckey)

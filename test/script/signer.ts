@@ -1,5 +1,6 @@
-import { Buff }   from '@cmdcode/buff'
-import { Assert } from '@/util/index.js'
+import { Buff }   from '@vbyte/buff'
+import { Assert } from '@vbyte/micro-lib/assert'
+import { sha256 } from '@vbyte/micro-lib/hash'
 
 import {
   ConnectToken,
@@ -11,7 +12,7 @@ import {
 const name   = 'carol'
 const relays = [ 'ws://localhost:8080' ]
 
-const seckey   = Buff.str(name).digest.hex
+const seckey   = sha256(Buff.str(name)).hex
 const signer   = new SimpleSigner(seckey)
 const client   = new NostrClient(signer)
 const sessions = new SessionManager(client, { verbose : false })

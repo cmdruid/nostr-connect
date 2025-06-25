@@ -1,4 +1,4 @@
-import * as base from '@/util/schema.js'
+import * as base from '@vbyte/micro-lib/schema'
 
 const perm_value = base.zod.union([
   base.zod.boolean(),

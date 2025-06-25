@@ -1,6 +1,6 @@
 import { z }                          from 'zod'
 import { schnorr }                    from '@noble/curves/secp256k1'
-import { sha256 }                     from '@noble/hashes/sha2'
+import { sha256 }                     from '@vbyte/micro-lib/hash'
 import { EventEmitter }               from 'node:events'
 import { WebSocket, WebSocketServer } from 'ws'
 

@@ -1,6 +1,7 @@
 import { NostrClient }  from '@/class/client.js'
 import { EventEmitter } from '@/class/emitter.js'
-import { Assert, now }  from '@/util/index.js'
+import { Assert }       from '@vbyte/micro-lib/assert'
+import { now }          from '@vbyte/micro-lib/util'
 import { REQ_METHOD }   from '@/const.js'
 
 import {

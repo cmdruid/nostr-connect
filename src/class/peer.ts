@@ -1,6 +1,6 @@
-import { Buff }         from '@cmdcode/buff'
+import { Buff }         from '@vbyte/buff'
 import { EventEmitter } from '@/class/emitter.js'
-import { now }          from '@/util/helpers.js'
+import { now }          from '@vbyte/micro-lib/util'
 
 import type { NostrClient } from '@/class/client.js'
 

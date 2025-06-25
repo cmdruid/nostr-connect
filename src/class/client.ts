@@ -1,11 +1,12 @@
-import { Buff }           from '@cmdcode/buff'
-import { SimplePool }     from 'nostr-tools'
-import { EventEmitter }   from '@/class/emitter.js'
-import { gen_message_id } from '@/lib/util.js'
+import { Buff }             from '@vbyte/buff'
+import { SimplePool }       from 'nostr-tools'
+import { Assert }           from '@vbyte/micro-lib/assert'
+import { now, parse_error } from '@vbyte/micro-lib/util'
+import { EventEmitter }     from '@/class/emitter.js'
+import { gen_message_id }   from '@/lib/util.js'
 
 import { DOMAIN_TAG, EVENT_KIND, REQ_METHOD } from '@/const.js'
 import { parse_config, verify_options }       from '@/lib/validate.js'
-import { Assert, now, parse_error }           from '@/util/index.js'
 
 import {
   create_envelope,
@@ -34,6 +35,7 @@ import type {
   RequestMessage,
   ClientOptions
 } from '@/types/index.js'
+import { hash256 } from '@vbyte/micro-lib/hash'
 
 /**
  * Default configuration settings for a Nostr Client.
@@ -419,7 +421,7 @@ function get_node_config (
 function get_sub_id (pubkey : string) : string {
   const tag_bytes = Buff.str(DOMAIN_TAG)
   const pk_bytes  = Buff.hex(pubkey)
-  return Buff.join([ tag_bytes, pk_bytes ]).digest.hex
+  return hash256(tag_bytes, pk_bytes).hex
 }
 
 /**

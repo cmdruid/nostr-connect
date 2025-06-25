@@ -1,4 +1,5 @@
-import { Buff } from '@cmdcode/buff'
+import { Buff }    from '@vbyte/buff'
+import { hash256 } from '@vbyte/micro-lib/hash'
 
 import type { EventTemplate } from '@/types/index.js'
 
@@ -27,5 +28,5 @@ export function get_event_id (
     template.tags,
     template.content,
   ])
-  return Buff.str(preimg).digest.hex
+  return hash256(Buff.str(preimg)).hex
 }

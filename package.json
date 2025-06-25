@@ -29,20 +29,16 @@
       "import": "./dist/lib/index.js",
       "types": "./dist/lib/index.d.ts",
       "default": "./dist/lib/index.js"
-    },
-    "./util": {
-      "import": "./dist/util/index.js",
-      "types": "./dist/util/index.d.ts",
-      "default": "./dist/util/index.js"
     }
   },
   "scripts": {
-    "build": "./scripts/build.sh",
+    "build": "./script/build.sh",
     "demo:build": "cd demo && npm run build",
     "demo:dev": "cd demo && npm run dev",
     "loader": "tsx --tsconfig ./test/tsconfig.json",
     "relay": "tsx test/script/relay.ts",
-    "release": "npm test | faucet && npm run build",
+    "package": "npm test | faucet && npm run build",
+    "release": "./script/release.sh",
     "scratch": "tsx test/scratch.ts",
     "test": "tsx test/tape.ts",
     "test:client": "tsx test/script/client.ts",
@@ -66,7 +62,8 @@
     "ws": "^8.18.2"
   },
   "dependencies": {
-    "@cmdcode/buff": "^2.2.5",
+    "@vbyte/buff": "^1.0.2",
+    "@vbyte/micro-lib": "^1.0.8",
     "nostr-tools": "^2.15.0",
     "zod": "^3.25.67"
   }

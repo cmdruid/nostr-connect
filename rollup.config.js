@@ -1,8 +1,7 @@
-import commonjs    from '@rollup/plugin-commonjs'
-import json        from '@rollup/plugin-json'
-import resolve     from '@rollup/plugin-node-resolve'
-import terser      from '@rollup/plugin-terser'
-import typescript  from '@rollup/plugin-typescript'
+import commonjs   from '@rollup/plugin-commonjs'
+import resolve    from '@rollup/plugin-node-resolve'
+import terser     from '@rollup/plugin-terser'
+import typescript from '@rollup/plugin-typescript'
 
 const treeshake = {
 	moduleSideEffects       : false,
@@ -17,7 +16,6 @@ const onwarn = (warning) => {
   ) {
     return
   }
-  console.log(warning)
   throw new Error(warning)
 }
 
@@ -39,17 +37,15 @@ export default {
     {
       file: 'dist/script.js',
       format: 'iife',
-      name: 'nostr_p2p',
-      plugins: [terser()],
-      sourcemap: true
+      name: 'nostr_connect',
+      plugins: [ terser() ],
+      sourcemap: true,
+      globals: {
+        crypto: 'crypto',
+      }
     }
   ],
-  plugins: [
-    resolve({ extensions : [ '.js', '.ts' ]}),
-    typescript(),
-    commonjs(),
-    json()
-  ],
+  plugins: [ typescript(), resolve(), commonjs() ],
   strictDeprecations: true,
   treeshake
 }

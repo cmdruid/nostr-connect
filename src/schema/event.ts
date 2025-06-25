@@ -1,4 +1,4 @@
-import * as base from '@/util/schema.js'
+import * as base from '@vbyte/micro-lib/schema'
 
 const z      = base.zod
 const tags   = base.str.array()

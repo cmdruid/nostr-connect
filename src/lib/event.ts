@@ -1,4 +1,4 @@
-import { now } from '@/util/index.js'
+import { now } from '@vbyte/micro-lib/util'
 
 import type {
   SignedEvent,

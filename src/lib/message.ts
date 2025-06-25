@@ -1,4 +1,4 @@
-import { JsonUtil } from '@/util/index.js'
+import { JsonUtil } from '@vbyte/micro-lib/json'
 
 import type {
   SignedEvent,

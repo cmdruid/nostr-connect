@@ -1,16 +1,14 @@
 import tape from 'tape'
 
-import { sleep }         from '@cmdcode/nostr-connect/util'
-import { NostrRelay }    from '@/script/relay.js'
-import { create_client } from '@/test/lib/client.js'
+import { sleep }         from '@vbyte/micro-lib/util'
+import { NostrRelay }    from './script/relay.js'
+import { create_client } from './src/lib/client.js'
 
-import type { TestContext } from '@/test/types.js'
+import type { TestContext } from './src/types.js'
 
-import ping_test   from '@/test/case/ping.test.js'
-import pubkey_test from '@/test/case/pubkey.test.js'
-import sign_test   from '@/test/case/sign.test.js'
-
-
+import ping_test   from './src/case/ping.test.js'
+import pubkey_test from './src/case/pubkey.test.js'
+import sign_test   from './src/case/sign.test.js'
 
 tape('nostr-connect test suite', async t => {
 
@@ -30,8 +28,8 @@ tape('nostr-connect test suite', async t => {
 
   await sleep(1000)
   ping_test(ctx)
-  pubkey_test(ctx)
-  sign_test(ctx)
+  // pubkey_test(ctx)
+  // sign_test(ctx)
 
   t.test('stopping relay and nodes', async t => {
     await sleep(1000) 

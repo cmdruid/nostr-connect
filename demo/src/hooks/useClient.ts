@@ -66,12 +66,10 @@ export function useClient () : NostrClientAPI {
     if (!encrypted) return
     // Get the seckey from the encrypted secret.
     const seckey = decrypt_secret(encrypted, password)
-    // Get the pubkey from the seckey.
-    const pubkey = getPublicKey(seckey)
     // Create a new signer device.
     const signer = new SimpleSigner(seckey)
     // Create a new client.
-    const client = new NostrClient(pubkey, signer, {
+    const client = new NostrClient(signer, {
       debug  : false,
       relays : Array.from(urls)
     })
