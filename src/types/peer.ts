@@ -1,3 +1,5 @@
+import type { PermissionPolicy } from './perms.js'
+
 export interface PeerProfile {
   name?  : string
   url?   : string
@@ -14,11 +16,10 @@ export interface PeerManagerOptions extends Partial<PeerManagerConfig> {
 }
 
 export interface PeerManagerConfig {
-  debug   : boolean
-  profile : PeerProfile
-  relays  : string[]
-  timeout : number
-  verbose : boolean
+  policy   : PermissionPolicy
+  profile  : PeerProfile
+  relays   : string[]
+  timeout  : number
 }
 
 export interface PeerEventMap extends Record<string, any> {

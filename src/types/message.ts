@@ -4,7 +4,7 @@ export type MessageTemplate = RequestTemplate | AcceptTemplate | RejectTemplate
 export type ResponseMessage = AcceptMessage   | RejectMessage
 export type SignedMessage   = RequestMessage  | ResponseMessage
 
-export interface MessageConfig {
+export interface EnvelopeConfig {
   created_at? : number
   kind        : number
   tags?       : string[][]

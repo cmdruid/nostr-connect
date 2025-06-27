@@ -1,24 +1,32 @@
-import { NostrClient }  from '@/class/client.js'
-import { EventEmitter } from '@/class/emitter.js'
-import { Assert }       from '@vbyte/micro-lib/assert'
-import { now }          from '@vbyte/micro-lib/util'
-import { REQ_METHOD }   from '@/const.js'
+import { NostrClient }      from '@/class/client.js'
+import { EventEmitter }     from '@/class/emitter.js'
+import { Assert }           from '@vbyte/micro-lib/assert'
+import { now }              from '@vbyte/micro-lib/util'
+
+import * as CONST from '@/const.js'
 
 import {
   PublishedEvent,
   SessionToken,
   RequestMessage,
   ConnectionToken,
+  PermissionPolicy,
   SessionEventMap,
   SessionManagerOptions,
   SessionManagerConfig
 } from '@/types/index.js'
 
+const DEFAULT_POLICY : () => PermissionPolicy = () => {
+  return {
+    methods : CONST.DEFAULT_METHOD_PERMS,
+    kinds   : CONST.DEFAULT_KIND_PERMS
+  }
+}
+
 const DEFAULT_CONFIG : () => SessionManagerConfig = () => {
   return {
-    debug   : false,
+    policy  : DEFAULT_POLICY(),
     timeout : 30,
-    verbose : false,
   }
 }
 
@@ -57,6 +65,12 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     return this._config
   }
 
+  get names () : Map<string, SessionToken> {
+    return new Map(
+      Array.from(this._active.values()).map(session => [ session.name, session ])
+    )
+  }
+
   get pending () : SessionToken[] {
     return Array.from(this._pending.values())
   }
@@ -70,6 +84,10 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     this._pending.delete(token.pubkey)
     // Delete the timer from the timers map.
     this._timers.delete(token.pubkey)
+    // Check if the session name is already in use.
+    const existing = this.names.get(token.name)
+    // If there is an existing session, delete it.
+    if (existing) this._active.delete(existing.pubkey)
     // Add the token to the active session map.
     this._active.set(token.pubkey, token)
     // Emit the token activation to the client.
@@ -117,11 +135,11 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
       if (!session) return
       // Handle the request method.
       switch (req.method) {
-        case REQ_METHOD.CONNECT:
+        case CONST.REQ_METHOD.CONNECT:
           // Send a response to the client.
           this._client.respond(req.id, sender_pk, 'ack', session.relays)
           break
-        case REQ_METHOD.GET_PUBKEY:
+        case CONST.REQ_METHOD.GET_PUBKEY:
           // Get the client's public key.
           const pubkey = this._client.pubkey
           console.log('sending pubkey:', pubkey)
@@ -148,6 +166,8 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
    * @returns The response from the client.
    */
   async connect (connect_tkn : ConnectionToken) : Promise<PublishedEvent> {
+    // Assert that the session name is required.
+    Assert.exists(connect_tkn.name, 'session name is required')
     // Unpack the connection token.
     const { secret, ...token } = connect_tkn
     // Update our subscription list.

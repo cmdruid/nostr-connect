@@ -1,12 +1,13 @@
 import { Buff }             from '@vbyte/buff'
 import { SimplePool }       from 'nostr-tools'
 import { Assert }           from '@vbyte/micro-lib/assert'
+import { hash256 }          from '@vbyte/micro-lib/hash'
 import { now, parse_error } from '@vbyte/micro-lib/util'
 import { EventEmitter }     from '@/class/emitter.js'
 import { gen_message_id }   from '@/lib/util.js'
 
-import { DOMAIN_TAG, EVENT_KIND, REQ_METHOD } from '@/const.js'
-import { parse_config, verify_options }       from '@/lib/validate.js'
+import { DOMAIN_TAG, EVENT_KIND, FLAGS, REQ_METHOD } from '@/const.js'
+import { parse_config, verify_options }              from '@/lib/validate.js'
 
 import {
   create_envelope,
@@ -35,20 +36,18 @@ import type {
   RequestMessage,
   ClientOptions
 } from '@/types/index.js'
-import { hash256 } from '@vbyte/micro-lib/hash'
+import { create_logger } from '@vbyte/micro-lib'
 
 /**
  * Default configuration settings for a Nostr Client.
  */
 const DEFAULT_CONFIG : () => ClientConfig = () => {
   return {
-    debug   : false,
     timeout : 5000,
-    verbose : true
   }
 }
 
-const LOG_PREFIX = '[ connect ]'
+const log = create_logger('connect', FLAGS)
 
 export class NostrClient extends EventEmitter <ClientEventMap> {
 
@@ -105,25 +104,18 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     return this._pool.listConnectionStatus()
   }
 
-  private get log () {
-    return {
-      debug : (...args : any[]) => this.config.debug   && console.log(LOG_PREFIX, ...args),
-      info  : (...args : any[]) => this.config.verbose && console.log(LOG_PREFIX, ...args)
-    }
-  }
-
   private _close () : void {
     // Set the client to not ready.
     this._ready = false
     // Log the disconnected event.
-    this.log.info('subscription closed')
+    log.info('subscription closed')
     // Emit the unsubscribed event.
     this.emit('unsubscribed')
   }
 
   private _eose () : void {
     // Log the subscription.
-    this.log.info('subscription updated')
+    log.info('subscription updated')
     // Emit the subscribed event.
     this.emit('subscribed')
     // If the client is already ready, return.
@@ -131,7 +123,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Set the client to ready.
     this._ready = true
     // Log the ready event.
-    this.log.info('client connected')
+    log.info('client connected')
     // Emit the ready event.
     this.emit('ready')
   }
@@ -157,7 +149,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
           this._pong(message)
         } else {
           // Log the request.
-          this.log.info('received request for method:', message.method)
+          log.info('received request for method:', message.method)
           // Emit the request to the client emitter.
           this.emit('request', message)
         }
@@ -167,7 +159,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
       }
     } catch (err) {
       // Log the error.
-      this.log.debug('bounced:', event, err)
+      log.debug('bounced:', event, err)
       // Emit the bounced event to the client emitter.
       this.emit('bounced', event, parse_error(err))
     }
@@ -179,7 +171,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Create the pong message template.
     const tmpl = { result: 'pong', id: message.id }
     // Log the pong message.
-    this.log.debug('sending pong:', tmpl, message.env.pubkey)
+    log.debug('sending pong:', tmpl, message.env.pubkey)
     // Send the pong message.
     return this.send(tmpl, message.env.pubkey)
   }
@@ -244,7 +236,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
       this._ready = false
     }
     // Log the close event.
-    this.log.info('connection closed')
+    log.info('connection closed')
     // Emit the close event.
     this.emit('closed')
   }
@@ -258,7 +250,7 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Create the ping template.
     const tmpl = { method: 'ping', id: gen_message_id() }
     // Log the ping.
-    this.log.info('sending ping to:', recipient)
+    log.info('sending ping to:', recipient)
     // Send the ping.
     return this.request(tmpl, recipient)
       .then(res => res.type === 'accept')
@@ -297,8 +289,8 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
       }, timeout)
     })
     // Log the request.
-    this.log.info('sending request to:', recipient)
-    this.log.debug('request:', tmpl)
+    log.info('sending request to:', recipient)
+    log.debug('request:', tmpl)
     // Send the request.
     this.send(tmpl, recipient, relays)
     // Return the promise to resolve the response.
@@ -321,8 +313,8 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Create the response template.
     const tmpl = create_accept_template({ id, result })
     // Log the response.
-    this.log.info('sending response to:', pubkey)
-    this.log.debug('response:', tmpl)
+    log.info('sending response to:', pubkey)
+    log.debug('response:', tmpl)
     // Send the response.
     return this.send(tmpl, pubkey, relays)
   }
@@ -343,8 +335,8 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Create the rejection template.
     const tmpl = create_reject_template({ id, error: reason })
     // Log the rejection.
-    this.log.info('sending rejection to:', pubkey)
-    this.log.debug('rejection:', tmpl)
+    log.info('sending rejection to:', pubkey)
+    log.debug('rejection:', tmpl)
     // Send the rejection.
     return this.send(tmpl, pubkey, relays)
   }
@@ -363,9 +355,9 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     // Collect the publication promises.
     const promises = this._pool.publish(relays, event)
     // Log the publication.
-    this.log.info('sending to:', recipient)
-    this.log.debug('template:', template)
-    this.log.debug('event:',    event)
+    log.info('sending to:', recipient)
+    log.debug('template:', template)
+    log.debug('event:',    event)
     // Wait for the publication promises to settle.
     const settled  = await Promise.allSettled(promises)
     // Parse the receipts.

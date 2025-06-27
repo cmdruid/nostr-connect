@@ -1,6 +1,7 @@
-import { Buff }         from '@vbyte/buff'
-import { EventEmitter } from '@/class/emitter.js'
-import { now }          from '@vbyte/micro-lib/util'
+import { Buff }           from '@vbyte/buff'
+import { EventEmitter }   from '@/class/emitter.js'
+import { now }            from '@vbyte/micro-lib/util'
+import { DEFAULT_POLICY } from '@/lib/perms.js'
 
 import type { NostrClient } from '@/class/client.js'
 
@@ -16,6 +17,7 @@ import type {
 const DEFAULT_CONFIG : () => PeerManagerConfig = () => {
   return {
     debug   : false,
+    policy  : DEFAULT_POLICY(),
     profile : {},
     relays  : [],
     timeout : 30,
@@ -110,11 +112,16 @@ export class PeerManager extends EventEmitter<PeerEventMap> {
     this.emit('invited', challenge)
   }
 
-  invite (relays? : string[]) : ConnectionToken {
+  invite (
+    name    : string,
+    relays? : string[]
+  ) : ConnectionToken {
     // Create a new secret.
     const secret = Buff.random(32).hex
     // Create a new connection token.
     const token : Omit<ConnectionToken, 'secret'> = {
+      name   : name,
+      policy : this.config.policy,
       pubkey : this._client.pubkey,
       relays : relays ?? this.config.relays,
       ...this.config.profile

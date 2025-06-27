@@ -11,9 +11,7 @@ export interface ClientOptions extends Partial<ClientConfig> {
 }
 
 export interface ClientConfig {
-  debug   : boolean
   timeout : number
-  verbose : boolean
 }
 
 export interface PublishResponse {

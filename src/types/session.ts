@@ -1,41 +1,35 @@
-export type PermissionMap = Record<string, boolean | number[]>
+import type { RequestMessage }   from './message.js'
+import type { PermissionPolicy } from './perms.js'
 
 export interface BaseToken {
-  pubkey     : string
-  relays     : string[]
-  perms?     : PermissionMap
-  name?      : string
-  url?       : string
-  image?     : string
-}
-
-export interface ConnectionToken extends BaseToken {
-  secret : string
-}
-
-export interface SessionOptions {
-  perms? : PermissionMap,
-  name?  : string,
-  url?   : string,
-  image? : string
-}
-
-export interface SessionConfig extends SessionOptions {
   name   : string
   pubkey : string
   relays : string[]
+  url?   : string
+  image? : string
 }
 
-export type SessionParams = [
-  pubkey : string,
-  perms? : PermissionMap,
-  name?  : string,
-  url?   : string,
-  image? : string
-]
+export interface ConnectionToken extends BaseToken {
+  policy : PermissionPolicy
+  secret : string
+}
 
 export interface SessionToken extends BaseToken {
+  policy     : PermissionPolicy
   created_at : number
+}
+
+export interface SessionTokenOptions {
+  policy? : PermissionPolicy
+  name?   : string
+  url?    : string
+  image?  : string
+}
+
+export interface SessionTokenConfig extends SessionTokenOptions {
+  name   : string
+  pubkey : string
+  relays : string[]
 }
 
 export interface SessionManagerOptions extends Partial<SessionManagerConfig> {
@@ -43,14 +37,14 @@ export interface SessionManagerOptions extends Partial<SessionManagerConfig> {
 }
 
 export interface SessionManagerConfig {
-  debug   : boolean
+  policy  : PermissionPolicy,
   timeout : number
-  verbose : boolean
 }
 
 export interface SessionEventMap extends Record<string, any> {
   activated : [ SessionToken ]
   cleared   : [ void ]
+  request   : [ RequestMessage, SessionToken ]
   revoked   : [ string ]
   pending   : [ SessionToken ]
   updated   : [ SessionToken ]

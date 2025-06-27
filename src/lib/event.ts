@@ -3,7 +3,7 @@ import { now } from '@vbyte/micro-lib/util'
 import type {
   SignedEvent,
   SignerDeviceAPI,
-  MessageConfig
+  EnvelopeConfig
 } from '@/types/index.js'
 
 /**
@@ -15,7 +15,7 @@ import type {
  * @returns        Signed Nostr event containing the encrypted message
  */
 export async function create_envelope (
-  config    : MessageConfig,
+  config    : EnvelopeConfig,
   payload   : string,
   recipient : string,
   signer    : SignerDeviceAPI

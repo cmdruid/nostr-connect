@@ -14,7 +14,7 @@ const relays = [ 'ws://localhost:8080' ]
 const seckey = sha256(Buff.str(name)).hex
 const signer = new SimpleSigner(seckey)
 const client = new NostrClient(signer)
-const peers  = new PeerManager(client, { verbose: false })
+const peers  = new PeerManager(client)
 
 client.on('request', (req) => {
   console.log('[ alice ] sent request')

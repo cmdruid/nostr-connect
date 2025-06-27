@@ -15,7 +15,7 @@ const relays = [ 'ws://localhost:8080' ]
 const seckey   = sha256(Buff.str(name)).hex
 const signer   = new SimpleSigner(seckey)
 const client   = new NostrClient(signer)
-const sessions = new SessionManager(client, { verbose : false })
+const sessions = new SessionManager(client)
 
 const invite_str = process.argv[2]
 

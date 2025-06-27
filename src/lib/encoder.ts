@@ -1,7 +1,12 @@
-import type {
-  PermissionMap,
-  ConnectionToken
-} from '@/types/index.js'
+import { Assert } from '@vbyte/micro-lib/assert'
+
+import {
+  DEFAULT_POLICY,
+  decode_permissions,
+  encode_permissions
+} from '@/lib/perms.js'
+
+import type { ConnectionToken } from '@/types/index.js'
 
 export namespace ConnectToken {
   export const encode = encode_connect_url
@@ -10,7 +15,7 @@ export namespace ConnectToken {
 
 export function encode_connect_url (token : ConnectionToken) {
   // Unpack the session token.
-  const { perms, pubkey, relays, secret } = token
+  const { policy, pubkey, relays, secret } = token
   // Create the base connection string.
   let url = `nostrconnect://${pubkey}?`
   // Check if the relays are provided.
@@ -34,8 +39,8 @@ export function encode_connect_url (token : ConnectionToken) {
     url += `image=${encodeURIComponent(token.image)}&`
   }
   // Add the permissions to the connection string.
-  if (perms) {
-    const encoded = encode_permissions(perms)
+  if (policy) {
+    const encoded = encode_permissions(policy)
     url += `perms=${encodeURIComponent(encoded)}&`
   }
   // Check if the secret is provided.
@@ -53,71 +58,26 @@ export function decode_connect_url (str : string) : ConnectionToken {
   const pubkey = token.hostname
   // Get the query params.
   const params = token.searchParams
+  // Get the name.
+  const name  = params.get('name')
+  // Assert that the name is provided.
+  Assert.exists(name, 'session name is required')
   // Get the relays.
   const relays = params.getAll('relay')
-  // Check if the relays are provided.
-  if (relays.length === 0) throw new Error('no relays provided')
+  // Assert that the relays are provided.
+  Assert.ok(relays.length > 0, 'no relays provided')
   // Get the secret.
   const secret = params.get('secret')
-  // Check if the secret is provided.
-  if (!secret) throw new Error('no secret provided')
-  // Get the name.
-  const name  = params.get('name')  || undefined
+  // Assert that the secret is provided.
+  Assert.exists(secret, 'no secret provided')
   // Get the client host url.
-  const url   = params.get('url')   || undefined
+  const url    = params.get('url')   || undefined
   // Get the image.
-  const image = params.get('image') || undefined
+  const image  = params.get('image') || undefined
   // Get the permissions.
-  const pstr  = params.get('perms') || undefined
+  const pstr   = params.get('perms') || undefined
   // Decode the permissions.
-  const perms = pstr ? decode_permissions(pstr) : undefined
+  const policy = pstr ? decode_permissions(pstr) : DEFAULT_POLICY()
   // Return the session token.
-  return { pubkey, relays, secret, name, url, image, perms }
-}
-
-export function encode_permissions (perm_map : PermissionMap) {
-  // Get the entries from the permission map.
-  const entries  = Object.entries(perm_map)
-  // Create the permission string.
-  let perm_str = ''
-  // Iterate over the entries.
-  entries.forEach(([ key, values ]) => {
-    // Check if the values are empty.
-    if (!Array.isArray(values) || values.length === 0) {
-      // Add the key to the permission string.
-      perm_str += `${key},`
-    } else {
-      // Iterate over the values.
-      values.forEach((value) => {
-        // Add the key and value to the permission string.
-        perm_str += `${key}:${value},`
-      })
-    }
-  })
-  // Remove the trailing comma and return the permission string.
-  return perm_str.slice(0, -1)
-}
-
-export function decode_permissions (str : string) {
-  // Create the permission map.
-  const perms   : PermissionMap = {}
-  // Split the permission string into entries.
-  const entries = str.split(',')
-  // Iterate over the entries.
-  entries.forEach((entry) => {
-    // Split the entry into key and value.
-    const [ key, value ] = entry.split(':')
-    // Get the current value for the key.
-    const curr = perms[key] || []
-    // Check if the value is a string.
-    if (Array.isArray(curr) && typeof value === 'string') {
-      // Parse the value as an integer and add it to the current value.
-      perms[key] = [ ...curr, parseInt(value) ]
-    } else {
-      // Add the value to the current value.
-      perms[key] = true
-    }
-  })
-  // Return the permission map.
-  return perms
+  return { pubkey, relays, secret, name, url, image, policy }
 }

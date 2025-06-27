@@ -1,15 +1,15 @@
 import type { EventTemplate } from 'nostr-tools'
 
-export type Nip46SignEventParams = [
+export type SignEventParams = [
   event : EventTemplate
 ]
 
-export type Nip46EncryptParams = [
+export type EncryptParams = [
   peer_pk   : string,
   plaintext : string
 ]
 
-export type Nip46DecryptParams = [
+export type DecryptParams = [
   peer_pk    : string,
   ciphertext : string
 ]

@@ -8,8 +8,8 @@ const Carol = create_client('carol')
 
 const relays = [ 'ws://localhost:8080' ]
 
-const peers    = new PeerManager(Alice,    { verbose: false })
-const sessions = new SessionManager(Carol, { verbose: false })
+const peers    = new PeerManager(Alice)
+const sessions = new SessionManager(Carol)
 
 Alice.on('request', (req) => {
   console.log('[ alice ] sent request')
@@ -75,7 +75,7 @@ sessions.on('request', (req, session) => {
 await Alice.subscribe(relays)
 await Carol.subscribe(relays)
 
-const invite = peers.invite(relays)
+const invite = peers.invite('alice', relays)
 
 console.log('alice invite:', invite)
 
