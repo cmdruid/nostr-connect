@@ -8,12 +8,11 @@ import {
   nip44
 } from 'nostr-tools'
 
-import type { SignerDeviceAPI } from '@/types/signer.js'
-
 import type {
   EventTemplate,
-  VerifiedEvent
-} from 'nostr-tools'
+  SignedEvent,
+  SignerDeviceAPI
+} from '@/types/index.js'
 
 const SIGN_METHODS : Record<string, string> = {
   sign_event    : 'sign_event',
@@ -40,7 +39,7 @@ export class SimpleSigner implements SignerDeviceAPI {
     return getPublicKey(this._seckey)
   }
 
-  async sign_event (event : EventTemplate) : Promise<VerifiedEvent> {
+  async sign_event (event : EventTemplate) : Promise<SignedEvent> {
     return finalizeEvent(event, this._seckey)
   }
 

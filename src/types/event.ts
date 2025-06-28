@@ -19,12 +19,12 @@ export interface EventTemplate {
   content    : string
   created_at : number
   kind       : number
-  pubkey     : string
   tags       : string[][]
 }
 
 export interface UnsignedEvent extends EventTemplate {
-  id : string
+  id     : string
+  pubkey : string
 }
 
 export interface SignedEvent extends UnsignedEvent {

@@ -1,8 +1,16 @@
-import { Assert }  from '@vbyte/micro-lib/assert'
-import { FLAGS }   from '@/const.js'
-import * as Schema from '@/schema/index.js'
+import { Assert }               from '@vbyte/micro-lib/assert'
+import { now }                  from '@vbyte/micro-lib/util'
+import { parse_event_template } from '@/lib/event.js'
+import { FLAGS }                from '@/const.js'
+import * as Schema              from '@/schema/index.js'
 
-import { PermissionPolicy } from '@/types/index.js'
+import type {
+  PermissionPolicy,
+  PermissionRequest,
+  PermissionUpdate,
+  RequestMessage,
+  SessionToken
+} from '@/types/index.js'
 
 export const DEFAULT_POLICY : () => PermissionPolicy = () => {
   return {
@@ -11,92 +19,84 @@ export const DEFAULT_POLICY : () => PermissionPolicy = () => {
   }
 }
 
-export function validate_perm_policy (perms : unknown) : asserts perms is PermissionPolicy {
-  const parsed = Schema.client.perm_map.safeParse(perms)
+export function validate_policy (policy : unknown) : asserts policy is PermissionPolicy {
+  const parsed = Schema.client.perm_map.safeParse(policy)
   if (!parsed.success && FLAGS.debug) {
     console.error(parsed.error)
-    throw new TypeError('invalid permissions')
+    throw new TypeError('invalid permissionpolicy')
   }
 }
 
-export function update_policy_methods (
+export function update_policy (
   policy  : PermissionPolicy,
-  updates : Record<string, boolean>
+  updates : PermissionUpdate
 ) : PermissionPolicy {
+  const updated = Object.assign({}, policy)
+  Object.assign(updated.methods, updates.methods)
+  Object.assign(updated.kinds,   updates.kinds)
+  return updated
+}
+
+export function create_permission_request (
+  message : RequestMessage,
+  token   : SessionToken
+) : PermissionRequest {
   return {
-    methods : policy.methods,
-    kinds   : policy.kinds
+    id         : message.id,
+    method     : message.method,
+    params     : message.params,
+    session    : token,
+    stamp      : now()
   }
 }
 
-export function update_policy_kinds (
-  policy  : PermissionPolicy,
-  updates : Record<number, boolean>
-) : PermissionPolicy {
-  return {
-    methods : policy.methods,
-    kinds   : policy.kinds
+export function check_permission_request (
+  req : PermissionRequest
+) : boolean | null {
+  // Get the request details.
+  const { method, params, session } = req
+  // Get the policy from the session.
+  const policy = session.policy
+  // Assert that the policy is valid.
+  validate_policy(policy)
+  // If the method is sign_event, check the kind.
+  if (method === 'sign_event') {
+    // Parse the event template.
+    const tmpl = parse_event_template(params[0])
+    // If the kind is allowed, return true.
+    if (policy.kinds[tmpl.kind] === true)  return true
+    // If the kind is denied, return false.
+    if (policy.kinds[tmpl.kind] === false) return false
+  } else {
+    // If the method is not sign_event, check the method.
+    if (policy.methods[method] === true)  return true
+    // If the method is denied, return false.
+    if (policy.methods[method] === false) return false
   }
-}
-
-export function get_perms_config (
-  perms  : unknown,
-  policy : PermissionPolicy
-) : PermissionMap {
-  // Assert that the permissions are an object.
-  validate_permissions(perms)
-  // Initialize the default policy for allowed methods.
-  for (const method of policy.methods.allow) {
-    if (!perms[method]) perms[method] = true
-  }
-  // Initialize the default policy for denied methods.
-  for (const method of policy.methods.deny) {
-    if (perms[method]) perms[method] = false
-  }
-  // If there are policies set for event kinds,
-  if (policy.kinds.allow.length > 0 || policy.kinds.deny.length > 0) {
-    // Initialize the default policy for allowed kinds.
-    perms.sign_event ??= []
-    Assert.ok(Array.isArray(perms.sign_event), 'sign_event permission must be an array')
-    // Initialize the default policy for allowed kinds.
-    for (const kind of policy.kinds.allow) {
-      if (!perms.sign_event.includes(kind)) perms.sign_event.push(kind)
-    }
-    // Initialize the default policy for denied kinds.
-    for (const kind of policy.kinds.deny) {
-      if (perms.sign_event.includes(kind)) perms.sign_event.splice(perms.sign_event.indexOf(kind), 1)
-    }
-  }
-  // Return the permissions.
-  return perms
+  // If the method is not allowed and not denied, return null.
+  return null
 }
 
 export function encode_permissions (policy : PermissionPolicy) {
-  // Get the entries from the permission map.
-  const entries  = Object.entries(policy)
   // Create the permission string.
   let perm_str = ''
-  // Iterate over the entries.
-  entries.forEach(([ key, values ]) => {
-    // Check if the values are empty.
-    if (!Array.isArray(values) || values.length === 0) {
-      // Add the key to the permission string.
-      perm_str += `${key},`
-    } else {
-      // Iterate over the values.
-      values.forEach((value) => {
-        // Add the key and value to the permission string.
-        perm_str += `${key}:${value},`
-      })
-    }
+  // Iterate over the policy methods:
+  Object.entries(policy.methods).forEach(([ key, value ]) => {
+    // If the key is not sign_event, add it to the permission string.
+    if (value && key !== 'sign_event') perm_str += `${key},`
+  })
+  // Iterate over the policy kinds:
+  Object.entries(policy.kinds).forEach(([ key, value ]) => {
+    // If the key is not sign_event, add it to the permission string.
+    if (value) perm_str += `sign_event:${key},`
   })
   // Remove the trailing comma and return the permission string.
   return perm_str.slice(0, -1)
 }
 
 export function decode_permissions (str : string) : PermissionPolicy {
-  // Create the permission map.
-  const perms   : PermissionMap = {}
+  const methods : Record<string, boolean> = {}
+  const kinds   : Record<number, boolean> = {}
   // Split the permission string into entries.
   const entries = str.split(',')
   // Iterate over the entries.
@@ -107,17 +107,19 @@ export function decode_permissions (str : string) : PermissionPolicy {
     if (entry.includes(':')) {
       // Split the entry into key and value.
       const [ key, value ] = entry.split(':')
-      // Get the current value for the key.
-      const curr = perms[key] ?? []
-      // Assert that the current value is an array.
-      Assert.ok(Array.isArray(curr), 'expected an array for key: ' + key)
-      // Parse the value as an integer and add it to the current value.
-      perms[key] = [ ...curr, parseInt(value) ]
+      // Assert that the key is sign_event.
+      Assert.ok(key === 'sign_event', 'invalid permission entry: ' + entry)
+      // Ensure that the value is an integer.
+      Assert.is_uint(value)
+      // Mark the sign_event permission as true.
+      methods[key] = true
+      // Mark the kind as true.
+      kinds[parseInt(value)] = true
     } else {
       // Add the value to the current value.
-      perms[entry] = true
+      methods[entry] = true
     }
   })
-  // Return the permission map.
-  return perms
+  // Return the permission policy.
+  return { methods, kinds }
 }

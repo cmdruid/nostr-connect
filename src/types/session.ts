@@ -1,5 +1,5 @@
 import type { RequestMessage }   from './message.js'
-import type { PermissionPolicy } from './perms.js'
+import type { PermissionPolicy } from './policy.js'
 
 export interface BaseToken {
   name   : string

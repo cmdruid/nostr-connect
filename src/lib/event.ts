@@ -1,9 +1,11 @@
-import { now } from '@vbyte/micro-lib/util'
+import { now }     from '@vbyte/micro-lib/util'
+import * as Schema from '@/schema/index.js'
 
 import type {
   SignedEvent,
   SignerDeviceAPI,
-  EnvelopeConfig
+  EnvelopeConfig,
+  EventTemplate
 } from '@/types/index.js'
 
 /**
@@ -24,12 +26,10 @@ export async function create_envelope (
   const created_at = config.created_at ?? now()
   // Define the tags.
   const tags     = config.tags ?? []
-  // Define the sender's public key.
-  const pubkey   = await signer.get_pubkey()
   // Encrypt the payload.
   const content  = await signer.nip44_encrypt(recipient, payload)
   // Create an event template.
-  const template = { ...config, pubkey, content, created_at, tags }
+  const template = { ...config, content, created_at, tags }
   // Add a tag for the peer's public key.
   template.tags.push([ 'p', recipient ])
   // Sign the event.
@@ -48,4 +48,12 @@ export async function decrypt_envelope (
   return event.content.includes('?iv=')
     ? signer.nip04_decrypt(event.pubkey, event.content)
     : signer.nip44_decrypt(event.pubkey, event.content)
+}
+
+export function parse_event_template (event : unknown) : EventTemplate {
+  return Schema.event.template.parse(event)
+}
+
+export function parse_signed_event (event : unknown) : SignedEvent {
+  return Schema.event.signed.parse(event)
 }

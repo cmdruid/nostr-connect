@@ -1,7 +1,7 @@
 import { Buff }    from '@vbyte/buff'
 import { hash256 } from '@vbyte/micro-lib/hash'
 
-import type { EventTemplate } from '@/types/index.js'
+import type { UnsignedEvent } from '@/types/index.js'
 
 /**
  * Generates a random 16-byte message identifier in hexadecimal format.
@@ -18,7 +18,7 @@ export function gen_message_id () {
  * @returns        Hexadecimal hash string representing the event ID
  */
 export function get_event_id (
-  template : EventTemplate
+  template : Omit<UnsignedEvent, 'id'>
 ) {
   const preimg = JSON.stringify([
     0,
