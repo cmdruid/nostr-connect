@@ -22,7 +22,7 @@ export function create_request_template (
   config : Partial<RequestTemplate>
 ) : RequestTemplate {
   // Parse the message template.
-  const schema = Schema.message.request.safeParse(config)
+  const schema = Schema.message.request_template.safeParse(config)
   // If the message template is invalid, throw an error.
   if (!schema.success) {
     console.error(schema.error)
@@ -42,7 +42,7 @@ export function create_accept_template (
   config : Partial<AcceptTemplate>
 ) : AcceptTemplate {
   // Parse the message template.
-  const schema = Schema.message.accept.safeParse(config)
+  const schema = Schema.message.accept_template.safeParse(config)
   // If the message template is invalid, throw an error.
   if (!schema.success) {
     console.error(schema.error)
@@ -62,7 +62,7 @@ export function create_reject_template (
   config : Partial<RejectTemplate>
 ) : RejectTemplate {
   // Parse the message template.
-  const schema = Schema.message.reject.safeParse(config)
+  const schema = Schema.message.reject_template.safeParse(config)
   // If the message template is invalid, throw an error.
   if (!schema.success) {
     console.error(schema.error)
@@ -87,7 +87,7 @@ export function parse_message (
   // If the message json is invalid, throw an error.
   if (!json) throw new Error('invalid message json')
   // Define the schema for a signed event.
-  const schema = Schema.message.all
+  const schema = Schema.message.template
   // Parse the event json.
   const parsed = schema.safeParse(json)
   // If the event schema is invalid, throw an error.

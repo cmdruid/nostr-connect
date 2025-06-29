@@ -6,8 +6,8 @@ import { now, parse_error } from '@vbyte/micro-lib/util'
 import { EventEmitter }     from '@/class/emitter.js'
 import { gen_message_id }   from '@/lib/util.js'
 
-import { DOMAIN_TAG, EVENT_KIND, FLAGS, REQ_METHOD } from '@/const.js'
-import { parse_config, verify_options }              from '@/lib/validate.js'
+import { DOMAIN_TAG, EVENT_KIND, REQ_METHOD } from '@/const.js'
+import { parse_config, verify_options }       from '@/lib/validate.js'
 
 import {
   create_envelope,
@@ -29,14 +29,13 @@ import type {
   SignerDeviceAPI,
   PublishResponse,
   ClientEventMap,
-  PublishedEvent,
+  PublishReceipt,
   MessageTemplate,
   RequestTemplate,
   ResponseMessage,
   RequestMessage,
   ClientOptions
 } from '@/types/index.js'
-import { create_logger } from '@vbyte/micro-lib'
 
 /**
  * Default configuration settings for a Nostr Client.
@@ -46,8 +45,6 @@ const DEFAULT_CONFIG : () => ClientConfig = () => {
     timeout : 5000,
   }
 }
-
-const log = create_logger('connect', { flags : FLAGS })
 
 export class NostrClient extends EventEmitter <ClientEventMap> {
 
@@ -107,23 +104,17 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   private _close () : void {
     // Set the client to not ready.
     this._ready = false
-    // Log the disconnected event.
-    log.info('subscription closed')
     // Emit the unsubscribed event.
     this.emit('unsubscribed')
   }
 
   private _eose () : void {
-    // Log the subscription.
-    log.info('subscription updated')
     // Emit the subscribed event.
     this.emit('subscribed')
     // If the client is already ready, return.
     if (this._ready) return
     // Set the client to ready.
     this._ready = true
-    // Log the ready event.
-    log.info('client connected')
     // Emit the ready event.
     this.emit('ready')
   }
@@ -148,8 +139,6 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
           // Send a pong response.
           this._pong(message)
         } else {
-          // Log the request.
-          log.info('received request for method:', message.method)
           // Emit the request to the client emitter.
           this.emit('request', message)
         }
@@ -158,20 +147,16 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
         this.emit('response', message)
       }
     } catch (err) {
-      // Log the error.
-      log.debug('bounced:', event, err)
       // Emit the bounced event to the client emitter.
       this.emit('bounced', event, parse_error(err))
     }
   }
 
-  private async _pong (message : RequestMessage) : Promise<PublishedEvent> {
+  private async _pong (message : RequestMessage) : Promise<PublishReceipt> {
     // Assert the message is a ping.
     Assert.ok(message.method === 'ping', 'invalid ping message')
     // Create the pong message template.
     const tmpl = { result: 'pong', id: message.id }
-    // Log the pong message.
-    log.debug('sending pong:', tmpl, message.env.pubkey)
     // Send the pong message.
     return this.send(tmpl, message.env.pubkey)
   }
@@ -235,8 +220,6 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
       // Set the client to not ready.
       this._ready = false
     }
-    // Log the close event.
-    log.info('connection closed')
     // Emit the close event.
     this.emit('closed')
   }
@@ -249,12 +232,17 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
   async ping (recipient : string) : Promise<boolean> {
     // Create the ping template.
     const tmpl = { method: 'ping', id: gen_message_id() }
-    // Log the ping.
-    log.info('sending ping to:', recipient)
-    // Send the ping.
+    // Emit the ping event.
+    this.emit('ping', recipient)
+    // Send the ping message.
     return this.request(tmpl, recipient)
-      .then(res => res.type === 'accept')
-      .catch(_ => false)
+      .then(res => {
+        if (res.type === 'accept') {
+          this.emit('pong', recipient)
+          return true
+        }
+        return false
+      })
   }
 
   /**
@@ -288,9 +276,6 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
         }
       }, timeout)
     })
-    // Log the request.
-    log.info('sending request to:', recipient)
-    log.debug('request:', tmpl)
     // Send the request.
     this.send(tmpl, recipient, relays)
     // Return the promise to resolve the response.
@@ -304,17 +289,16 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
    * @param result   The result of the request.
    * @returns        The published event.
    */
-  async respond (
+  async accept (
     id      : string,
     pubkey  : string,
     result  : string,
     relays? : string[]
-  ) : Promise<PublishedEvent> {
+  ) : Promise<PublishReceipt> {
     // Create the response template.
     const tmpl = create_accept_template({ id, result })
-    // Log the response.
-    log.info('sending response to:', pubkey)
-    log.debug('response:', tmpl)
+    // Emit the accept event.
+    this.emit('accept', tmpl, pubkey)
     // Send the response.
     return this.send(tmpl, pubkey, relays)
   }
@@ -331,12 +315,11 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     pubkey  : string,
     reason  : string,
     relays? : string[]
-  ) : Promise<PublishedEvent> {
+  ) : Promise<PublishReceipt> {
     // Create the rejection template.
     const tmpl = create_reject_template({ id, error: reason })
-    // Log the rejection.
-    log.info('sending rejection to:', pubkey)
-    log.debug('rejection:', tmpl)
+    // Emit the reject event.
+    this.emit('reject', tmpl, pubkey)
     // Send the rejection.
     return this.send(tmpl, pubkey, relays)
   }
@@ -345,27 +328,25 @@ export class NostrClient extends EventEmitter <ClientEventMap> {
     template  : MessageTemplate,
     recipient : string,
     relays    : string[] = this.relays
-  ) : Promise<PublishedEvent> {
+  ) : Promise<PublishReceipt> {
     // Assert that the client is ready.
     Assert.ok(this.is_ready, 'client is not connected')
     // Subscribe to the relays if needed.
     await this.subscribe(relays)
     // Create the event.
-    const event    = await this._notarize(template, recipient)
+    const event = await this._notarize(template, recipient)
+    // Emit the event to the client emitter.
+    this.emit('published', event)
     // Collect the publication promises.
     const promises = this._pool.publish(relays, event)
-    // Log the publication.
-    log.info('sending to:', recipient)
-    log.debug('template:', template)
-    log.debug('event:',    event)
     // Wait for the publication promises to settle.
     const settled  = await Promise.allSettled(promises)
     // Parse the receipts.
     const receipts = parse_receipts(settled)
     // Create the response.
-    const response = { ...receipts, event }
-    // Emit the event to the client emitter.
-    this.emit('published', response)
+    const response : PublishReceipt = { ...receipts, event }
+    // Emit the sent event.
+    this.emit('sent', response)
     // Return the response.
     return response
   }

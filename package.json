@@ -1,6 +1,6 @@
 {
   "name": "@cmdcode/nostr-connect",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Client and session manager for nostr connect.",
   "author": "Christopher Scott",
   "license": "MIT",

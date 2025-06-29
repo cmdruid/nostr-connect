@@ -4,10 +4,10 @@
  * @template T Record of event names mapped to their payload types (array of parameters)
  */
 export class EventEmitter<T extends Record<string, any[]> = {}> {
-  private readonly eventMap: Map<keyof T | '*', Set<Function>>;
+  private readonly eventMap: Map<keyof T | '*', Set<Function>>
 
   constructor() {
-    this.eventMap = new Map();
+    this.eventMap = new Map()
   }
 
   /**
@@ -17,13 +17,13 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
    * @returns          Set of handler functions for the event
    */
   private getEventHandlers(eventName: string): Set<Function> {
-    const handlers = this.eventMap.get(eventName);
+    const handlers = this.eventMap.get(eventName)
     if (!handlers) {
-      const newHandlers = new Set<Function>();
-      this.eventMap.set(eventName, newHandlers);
-      return newHandlers;
+      const newHandlers = new Set<Function>()
+      this.eventMap.set(eventName, newHandlers)
+      return newHandlers
     }
-    return handlers;
+    return handlers
   }
 
   /**
@@ -32,8 +32,8 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
    * @returns         True if the event has subscribers, false otherwise
    */
   public has<K extends keyof T>(eventName: K): boolean {
-    const handlers = this.eventMap.get(eventName);
-    return handlers !== undefined && handlers.size > 0;
+    const handlers = this.eventMap.get(eventName)
+    return handlers !== undefined && handlers.size > 0
   }
 
   /**
@@ -46,7 +46,7 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
     eventName: K,
     handler: (...args: T[K]) => void | Promise<void>
   ): void {
-    this.getEventHandlers(eventName as string).add(handler);
+    this.getEventHandlers(eventName as string).add(handler)
   }
 
   /**
@@ -60,10 +60,10 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
     handler: (...args: T[K]) => void | Promise<void>
   ): void {
     const oneTimeHandler = (...args: T[K]): void => {
-      this.off(eventName as string, oneTimeHandler);
-      void handler(...args);
-    };
-    this.on(eventName, oneTimeHandler);
+      this.off(eventName as string, oneTimeHandler)
+      void handler(...args)
+    }
+    this.on(eventName, oneTimeHandler)
   }
 
   /**
@@ -79,14 +79,14 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
     timeoutMs: number
   ): void {
     const timeoutHandler = (...args: T[K]): void => {
-      void handler(...args);
-    };
+      void handler(...args)
+    }
 
     setTimeout(() => {
-      this.off(eventName as string, timeoutHandler);
-    }, timeoutMs);
+      this.off(eventName as string, timeoutHandler)
+    }, timeoutMs)
 
-    this.on(eventName, timeoutHandler);
+    this.on(eventName, timeoutHandler)
   }
 
   /**
@@ -97,25 +97,25 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
    * @emits *         Also triggers wildcard handlers with event name and parameters
    */
   public emit<K extends keyof T>(eventName: K, ...args: T[K]): void {
-    const promises: Promise<any>[] = [];
+    const promises: Promise<any>[] = []
 
     // Call specific event handlers
     this.getEventHandlers(eventName as string).forEach(handler => {
-      const result = handler(...args);
+      const result = handler(...args)
       if (result instanceof Promise) {
-        promises.push(result);
+        promises.push(result)
       }
     });
 
     // Call wildcard handlers
     this.getEventHandlers('*').forEach(handler => {
-      const result = handler(eventName, ...args);
+      const result = handler(eventName, ...args)
       if (result instanceof Promise) {
-        promises.push(result);
+        promises.push(result)
       }
-    });
+    })
 
-    void Promise.allSettled(promises);
+    void Promise.allSettled(promises)
   }
 
   /**
@@ -135,6 +135,6 @@ export class EventEmitter<T extends Record<string, any[]> = {}> {
    * @param eventName  Name of the event to clear handlers for
    */
   public clear(eventName: string): void {
-    this.eventMap.delete(eventName);
+    this.eventMap.delete(eventName)
   }
 }

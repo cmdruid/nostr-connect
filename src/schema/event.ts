@@ -1,22 +1,22 @@
+import { z }     from 'zod'
 import * as base from '@vbyte/micro-lib/schema'
 
-const z    = base.zod
-const tags = base.str.array()
+import type { EventTemplate, SignedEvent, UnsignedEvent } from '@/types/index.js'
 
-const template = z.object({
+export const tags = base.str.array()
+
+export const template = z.object({
   content    : base.str,
   created_at : base.stamp,
   kind       : base.num,
   tags       : tags.array()
-})
+}) satisfies z.ZodType<EventTemplate>
 
-const unsigned = template.extend({
+export const unsigned = template.extend({
   id         : base.hex32,
   pubkey     : base.hex32
-})
+}) satisfies z.ZodType<UnsignedEvent>
 
-const signed = unsigned.extend({
+export const signed = unsigned.extend({
   sig : base.hex64,
-})
-
-export { signed, tags, template, unsigned }
+}) satisfies z.ZodType<SignedEvent>

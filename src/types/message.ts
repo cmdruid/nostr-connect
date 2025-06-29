@@ -27,10 +27,8 @@ export interface RejectTemplate {
 }
 
 export interface RequestMessage extends RequestTemplate {
-  env    : SignedEvent
-  id     : string
-  params : string[]
-  type   : 'request'
+  env  : SignedEvent
+  type : 'request'
 }
 
 export interface AcceptMessage extends AcceptTemplate {

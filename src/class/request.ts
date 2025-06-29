@@ -5,7 +5,8 @@ import { parse_error }    from '@vbyte/micro-lib/util'
 
 import {
   check_permission_request,
-  create_permission_request
+  create_permission_request,
+  update_policy
 } from '@/lib/perms.js'
 
 import type {
@@ -54,6 +55,8 @@ export class RequestManager extends EventEmitter<RequestEventMap> {
   }
 
   _handler (req : RequestMessage, token : SessionToken) {
+    // Emit the message event.
+    this.emit('message', req)
     // If the request is not a request, return early.
     if (req.type !== 'request') return
     // If the token is not found, return early.
@@ -106,7 +109,7 @@ export class RequestManager extends EventEmitter<RequestEventMap> {
 
   _update (session : SessionToken, changes : Partial<PermissionPolicy>) {
     // Create a new policy with the changes.
-    const policy = { ...session.policy, ...changes }
+    const policy = update_policy(session.policy, changes)
     // Update the session with the new policy.
     this._session.update({ ...session, policy })
   }

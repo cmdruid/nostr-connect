@@ -1,7 +1,8 @@
 import { Buff }    from '@vbyte/buff'
 import { hash256 } from '@vbyte/micro-lib/hash'
 
-import type { UnsignedEvent } from '@/types/index.js'
+import type { BaseEventMap, UnsignedEvent } from '@/types/index.js'
+import { EventEmitter } from '@/class/emitter.js'
 
 /**
  * Generates a random 16-byte message identifier in hexadecimal format.
@@ -29,4 +30,21 @@ export function get_event_id (
     template.content,
   ])
   return hash256(Buff.str(preimg)).hex
+}
+
+export function attach_logger (emitter : EventEmitter<BaseEventMap>) {
+  return {
+    info : (...args : any[]) => {
+      emitter.emit('info', ...args)
+    },
+    error : (...args : any[]) => {
+      emitter.emit('error', ...args)
+    },
+    warn : (...args : any[]) => {
+      emitter.emit('warn', ...args)
+    },
+    debug : (...args : any[]) => {
+      emitter.emit('debug', ...args)
+    }
+  }
 }

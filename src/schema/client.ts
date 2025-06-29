@@ -1,25 +1,10 @@
+import { z }     from 'zod'
 import * as base from '@vbyte/micro-lib/schema'
 
-const perm_value = base.zod.union([
-  base.zod.boolean(),
-  base.zod.array(base.num)
-])
+import type { ClientConfig, ClientOptions } from '@/types/index.js'
 
-const perm_map = base.zod.record(base.str, perm_value)
-
-const session = base.zod.object({
-  pubkey : base.hex32,
-  relays : base.str.array(),
-  perms  : perm_map.optional(),
-  name   : base.str.optional(),
-  url    : base.str.optional(),
-  image  : base.str.optional(),
-})
-
-const config = base.zod.object({
+export const config = base.zod.object({
   timeout : base.num,
-})
+}) satisfies z.ZodType<ClientConfig>
 
-const options = config.partial()
-
-export { config, options, perm_map, perm_value, session }
+export const options = config.partial() satisfies z.ZodType<ClientOptions>

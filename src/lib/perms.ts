@@ -2,7 +2,6 @@ import { Assert }                  from '@vbyte/micro-lib/assert'
 import { JsonUtil }                from '@vbyte/micro-lib'
 import { now }                     from '@vbyte/micro-lib/util'
 import { validate_event_template } from '@/lib/event.js'
-import { FLAGS }                   from '@/const.js'
 import * as Schema                 from '@/schema/index.js'
 
 import type {
@@ -20,12 +19,12 @@ export const DEFAULT_POLICY : () => PermissionPolicy = () => {
   }
 }
 
+export function parse_policy (policy : unknown) : PermissionPolicy {
+  return Schema.perm.policy.parse(policy)
+}
+
 export function validate_policy (policy : unknown) : asserts policy is PermissionPolicy {
-  const parsed = Schema.client.perm_map.safeParse(policy)
-  if (!parsed.success && FLAGS.debug) {
-    console.error(parsed.error)
-    throw new TypeError('invalid permissionpolicy')
-  }
+  parse_policy(policy)
 }
 
 export function update_policy (
@@ -63,9 +62,9 @@ export function check_permission_request (
   // If the method is sign_event, check the kind.
   if (method === 'sign_event') {
     // Define the json string from the request params.
-    const str  = params.at(0)
+    const str  = params?.at(0)
     // Parse the response json.
-    const tmpl = JsonUtil.parse(str)
+    const tmpl = str ? JsonUtil.parse(str) : undefined
     // If we can't parse the json, throw an error.
     Assert.exists(tmpl, 'failed to deserialize event json: ' + str)
     // Validate the event template.

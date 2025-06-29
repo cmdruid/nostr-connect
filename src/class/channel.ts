@@ -6,27 +6,25 @@ import { DEFAULT_POLICY } from '@/lib/perms.js'
 import type { NostrClient } from '@/class/client.js'
 
 import type {
-  ConnectionToken,
-  ChannelConfig,
+  InviteToken,
+  ChannelManagerConfig,
   ChannelManagerOptions,
   ResponseMessage,
   ChannelEventMap,
   ChannelMember
 } from '@/types/index.js'
 
-const DEFAULT_CONFIG : () => ChannelConfig = () => {
+const DEFAULT_CONFIG : () => ChannelManagerConfig = () => {
   return {
-    debug   : false,
     policy  : DEFAULT_POLICY(),
     profile : {},
-    timeout : 30,
-    verbose : false,
+    timeout : 30
   }
 }
 
 export class ChannelManager extends EventEmitter<ChannelEventMap> {
 
-  private readonly _config  : ChannelConfig
+  private readonly _config  : ChannelManagerConfig
   private readonly _client  : NostrClient
 
   private readonly _invites : Set<string> = new Set()
@@ -52,7 +50,7 @@ export class ChannelManager extends EventEmitter<ChannelEventMap> {
     this._client.on('response', this._handler.bind(this))
   }
 
-  get config () : ChannelConfig {
+  get config () : ChannelManagerConfig {
     return this._config
   }
 
@@ -111,11 +109,11 @@ export class ChannelManager extends EventEmitter<ChannelEventMap> {
     this.emit('invite', challenge)
   }
 
-  invite () : ConnectionToken {
+  invite () : InviteToken {
     // Create a new secret.
     const secret = Buff.random(32).hex
     // Create a new connection token.
-    const token : Omit<ConnectionToken, 'secret'> = {
+    const token : Omit<InviteToken, 'secret'> = {
       policy  : this.config.policy,
       profile : this.config.profile,
       pubkey  : this._client.pubkey,
@@ -142,7 +140,7 @@ export class ChannelManager extends EventEmitter<ChannelEventMap> {
 
 function get_channel_config (
   options : ChannelManagerOptions
-) : ChannelConfig {
+) : ChannelManagerConfig {
   const { members, ...rest } = options
   return { ...DEFAULT_CONFIG(), ...rest }
 }

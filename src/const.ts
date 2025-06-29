@@ -2,11 +2,6 @@ export const DOMAIN_TAG  = 'nostr-connect'
 export const REQ_TIMEOUT = 5000
 export const EVENT_KIND  = 24133
 
-export const FLAGS = {
-  debug   : false,
-  verbose : false
-}
-
 export const REQ_METHOD = {
   CONNECT    : 'connect',
   PING       : 'ping',

@@ -6,14 +6,14 @@ import {
   encode_permissions
 } from '@/lib/perms.js'
 
-import type { ConnectionToken, HostProfile } from '@/types/index.js'
+import type { InviteToken, ChannelProfile } from '@/types/index.js'
 
 export namespace ConnectToken {
   export const encode = encode_connect_url
   export const decode = decode_connect_url
 }
 
-export function encode_connect_url (token : ConnectionToken) {
+export function encode_connect_url (token : InviteToken) {
   // Unpack the session token.
   const { policy, pubkey, relays, secret } = token
   // Create the base connection string.
@@ -51,7 +51,7 @@ export function encode_connect_url (token : ConnectionToken) {
   return url
 }
 
-export function decode_connect_url (str : string) : ConnectionToken {
+export function decode_connect_url (str : string) : InviteToken {
   // Convert the string to a URL object.
   const token = new URL(str)
   // Get the pubkey from the hostname.
@@ -67,7 +67,7 @@ export function decode_connect_url (str : string) : ConnectionToken {
   // Assert that the secret is provided.
   Assert.exists(secret, 'no secret provided')
   // Get the profile.
-  const profile : HostProfile = {}
+  const profile : ChannelProfile = {}
   // Get the name.
   profile.name = params.get('name')   || undefined
   // Get the client host url.
