@@ -1,12 +1,11 @@
+import type { HostProfile }      from './channel.js'
 import type { RequestMessage }   from './message.js'
-import type { PermissionPolicy } from './policy.js'
+import type { PermissionPolicy } from './request.js'
 
 export interface BaseToken {
-  name   : string
-  pubkey : string
-  relays : string[]
-  url?   : string
-  image? : string
+  profile : HostProfile
+  pubkey  : string
+  relays  : string[]
 }
 
 export interface ConnectionToken extends BaseToken {
@@ -37,7 +36,6 @@ export interface SessionManagerOptions extends Partial<SessionManagerConfig> {
 }
 
 export interface SessionManagerConfig {
-  policy  : PermissionPolicy,
   timeout : number
 }
 

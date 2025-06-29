@@ -1,6 +1,7 @@
 import { EventEmitter }   from '@/class/emitter.js'
 import { NostrClient }    from '@/class/client.js'
 import { SessionManager } from '@/class/session.js'
+import { parse_error }    from '@vbyte/micro-lib/util'
 
 import {
   check_permission_request,
@@ -10,6 +11,7 @@ import {
 import type {
   PermissionPolicy,
   PermissionRequest,
+  RequestEventMap,
   RequestMessage,
   SessionToken
 } from '@/types/index.js'
@@ -20,11 +22,7 @@ const DEFAULT_CONFIG : () => Record<string, any> = () => {
   }
 }
 
-export class RequestManager extends EventEmitter <{
-  'request'  : [ PermissionRequest ],
-  'approved' : [ PermissionRequest ],
-  'denied'   : [ PermissionRequest ]
-}> {
+export class RequestManager extends EventEmitter<RequestEventMap> {
   private readonly _config  : Record<string, any>
   private readonly _client  : NostrClient
   private readonly _queue   : Map<string, PermissionRequest> = new Map()
@@ -62,28 +60,36 @@ export class RequestManager extends EventEmitter <{
     if (!token) return
     // Create a permission request.
     const perm_req = create_permission_request(req, token)
-    // Check the permission request.
-    const result = check_permission_request(perm_req)
-    // If the policy check returns true,
-    if (result === true) {
-      // Approve the request.
-      this.approve(perm_req)
-    // If the policy check returns false,
-    } else if (result === false) {
+    // Try to create a permission request.
+    try {
+      // Check the permission request.
+      const result = check_permission_request(perm_req)
+      // If the policy check returns true,
+      if (result === true) {
+        // Approve the request.
+        this.approve(perm_req)
+      // If the policy check returns false,
+      } else if (result === false) {
+        // Deny the request.
+        this.deny(perm_req, 'permission denied')
+      // If the policy check returns null,
+      } else {
+        // Add the request to the queue.
+        this._queue.set(req.id, perm_req)
+        // Get the timeout in milliseconds.
+        const timeout = this.config.timeout * 1000
+        // Add a timer to auto-reject the request.
+        const timer = setTimeout(() => { this.deny(perm_req, 'request timed out') }, timeout)
+        // Add the timer to the timers map.
+        this._timers.set(req.id, timer)
+        // Emit the request event on the bus.
+        this.emit('request', perm_req)
+      }
+    } catch (err) {
       // Deny the request.
-      this.deny(perm_req)
-    // If the policy check returns null,
-    } else {
-      // Add the request to the queue.
-      this._queue.set(req.id, perm_req)
-      // Get the timeout in milliseconds.
-      const timeout = this.config.timeout * 1000
-      // Add a timer to auto-reject the request.
-      const timer = setTimeout(() => { this.deny(perm_req) }, timeout)
-      // Add the timer to the timers map.
-      this._timers.set(req.id, timer)
-      // Emit the request event on the bus.
-      this.emit('request', perm_req)
+      this.deny(perm_req, 'failed to handle request')
+      // Emit the error event on the bus.
+      this.emit('error', perm_req,  parse_error(err))
     }
   }
 
@@ -119,12 +125,13 @@ export class RequestManager extends EventEmitter <{
 
   deny (
     req      : PermissionRequest,
+    reason   : string,
     changes? : Partial<PermissionPolicy>
   ) {
     // Get the pubkey from the request.
     const pubkey = req.session.pubkey
     // Send a rejection response to the client.
-    this._client.reject(req.id, pubkey, 'user denied the request')
+    this._client.reject(req.id, pubkey, reason)
     // If there are changes, update the policy.
     if (changes) this._update(req.session, changes)
     // Remove the request from the queue.

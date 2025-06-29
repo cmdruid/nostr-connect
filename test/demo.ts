@@ -1,4 +1,4 @@
-import { PeerManager, SessionManager } from '@/index.js'
+import { ChannelManager, SessionManager } from '@/index.js'
 
 import { create_client } from '@test/lib/client.js'
 
@@ -8,7 +8,7 @@ const Carol = create_client('carol')
 
 const relays = [ 'ws://localhost:8080' ]
 
-const peers    = new PeerManager(Alice)
+const peers    = new ChannelManager(Alice)
 const sessions = new SessionManager(Carol)
 
 Alice.on('request', (req) => {

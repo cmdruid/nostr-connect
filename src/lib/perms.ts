@@ -1,8 +1,9 @@
-import { Assert }               from '@vbyte/micro-lib/assert'
-import { now }                  from '@vbyte/micro-lib/util'
-import { parse_event_template } from '@/lib/event.js'
-import { FLAGS }                from '@/const.js'
-import * as Schema              from '@/schema/index.js'
+import { Assert }                  from '@vbyte/micro-lib/assert'
+import { JsonUtil }                from '@vbyte/micro-lib'
+import { now }                     from '@vbyte/micro-lib/util'
+import { validate_event_template } from '@/lib/event.js'
+import { FLAGS }                   from '@/const.js'
+import * as Schema                 from '@/schema/index.js'
 
 import type {
   PermissionPolicy,
@@ -61,8 +62,14 @@ export function check_permission_request (
   validate_policy(policy)
   // If the method is sign_event, check the kind.
   if (method === 'sign_event') {
-    // Parse the event template.
-    const tmpl = parse_event_template(params[0])
+    // Define the json string from the request params.
+    const str  = params.at(0)
+    // Parse the response json.
+    const tmpl = JsonUtil.parse(str)
+    // If we can't parse the json, throw an error.
+    Assert.exists(tmpl, 'failed to deserialize event json: ' + str)
+    // Validate the event template.
+    validate_event_template(tmpl)
     // If the kind is allowed, return true.
     if (policy.kinds[tmpl.kind] === true)  return true
     // If the kind is denied, return false.

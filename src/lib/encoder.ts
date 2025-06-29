@@ -6,7 +6,7 @@ import {
   encode_permissions
 } from '@/lib/perms.js'
 
-import type { ConnectionToken } from '@/types/index.js'
+import type { ConnectionToken, HostProfile } from '@/types/index.js'
 
 export namespace ConnectToken {
   export const encode = encode_connect_url
@@ -27,16 +27,16 @@ export function encode_connect_url (token : ConnectionToken) {
     url += `relay=${encodeURIComponent(relay)}&`
   })
   // Add the name to the connection string.
-  if (token.name) {
-    url += `name=${encodeURIComponent(token.name)}&`
+  if (token.profile.name) {
+    url += `name=${encodeURIComponent(token.profile.name)}&`
   }
   // Add the client host url to the connection string.
-  if (token.url) {
-    url += `url=${encodeURIComponent(token.url)}&`
+  if (token.profile.url) {
+    url += `url=${encodeURIComponent(token.profile.url)}&`
   }
   // Add the image to the connection string.
-  if (token.image) {
-    url += `image=${encodeURIComponent(token.image)}&`
+  if (token.profile.image) {
+    url += `image=${encodeURIComponent(token.profile.image)}&`
   }
   // Add the permissions to the connection string.
   if (policy) {
@@ -58,10 +58,6 @@ export function decode_connect_url (str : string) : ConnectionToken {
   const pubkey = token.hostname
   // Get the query params.
   const params = token.searchParams
-  // Get the name.
-  const name  = params.get('name')
-  // Assert that the name is provided.
-  Assert.exists(name, 'session name is required')
   // Get the relays.
   const relays = params.getAll('relay')
   // Assert that the relays are provided.
@@ -70,14 +66,18 @@ export function decode_connect_url (str : string) : ConnectionToken {
   const secret = params.get('secret')
   // Assert that the secret is provided.
   Assert.exists(secret, 'no secret provided')
+  // Get the profile.
+  const profile : HostProfile = {}
+  // Get the name.
+  profile.name = params.get('name')   || undefined
   // Get the client host url.
-  const url    = params.get('url')   || undefined
+  profile.url  = params.get('url')    || undefined
   // Get the image.
-  const image  = params.get('image') || undefined
+  profile.image = params.get('image') || undefined
   // Get the permissions.
-  const pstr   = params.get('perms') || undefined
+  const pstr   = params.get('perms')  || undefined
   // Decode the permissions.
   const policy = pstr ? decode_permissions(pstr) : DEFAULT_POLICY()
   // Return the session token.
-  return { pubkey, relays, secret, name, url, image, policy }
+  return { policy, profile, pubkey, relays, secret }
 }

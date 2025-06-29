@@ -4,7 +4,7 @@ export const EVENT_KIND  = 24133
 
 export const FLAGS = {
   debug   : false,
-  verbose : true
+  verbose : false
 }
 
 export const REQ_METHOD = {

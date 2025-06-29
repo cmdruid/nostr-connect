@@ -57,3 +57,15 @@ export function parse_event_template (event : unknown) : EventTemplate {
 export function parse_signed_event (event : unknown) : SignedEvent {
   return Schema.event.signed.parse(event)
 }
+
+export function validate_event_template (
+  event : unknown
+) : asserts event is EventTemplate {
+  parse_event_template(event)
+}
+
+export function validate_signed_event (
+  event : unknown
+) : asserts event is SignedEvent {
+  parse_signed_event(event)
+}

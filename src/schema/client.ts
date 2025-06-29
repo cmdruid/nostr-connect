@@ -17,8 +17,6 @@ const session = base.zod.object({
 })
 
 const config = base.zod.object({
-  debug   : base.bool,
-  verbose : base.bool,
   timeout : base.num,
 })
 

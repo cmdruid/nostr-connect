@@ -47,7 +47,7 @@ const DEFAULT_CONFIG : () => ClientConfig = () => {
   }
 }
 
-const log = create_logger('connect', FLAGS)
+const log = create_logger('connect', { flags : FLAGS })
 
 export class NostrClient extends EventEmitter <ClientEventMap> {
 

@@ -1,5 +1,6 @@
 import { z }                          from 'zod'
 import { schnorr }                    from '@noble/curves/secp256k1'
+import { Buff }                       from '@vbyte/buff'
 import { sha256 }                     from '@vbyte/micro-lib/hash'
 import { EventEmitter }               from 'node:events'
 import { WebSocket, WebSocketServer } from 'ws'
@@ -200,6 +201,8 @@ class ClientSession {
   _handler (message : string) {
     let verb : string, payload : any
 
+    this.log.debug('received message:', message)
+
     try {
       [ verb, ...payload ] = JSON.parse(message)
       assert(typeof verb === 'string')
@@ -218,8 +221,10 @@ class ClientSession {
           this.log.info('unable to handle message type:', verb)
           this.send(['NOTICE', '', 'Unable to handle message'])
       }
-    } catch (e) {
-      this.log.debug('failed to parse message:\n\n', message)
+    } catch (err) {
+      this.log.info('failed to parse message')
+      this.log.info(message)
+      this.log.info(err)
       return this.send(['NOTICE', '', 'Unable to parse message'])
     }
   }
@@ -369,8 +374,8 @@ function match_tags (
 
 function verify_event (event : SignedEvent) {
   const { content, created_at, id, kind, pubkey, sig, tags } = event
-  const preimg = JSON.stringify([ 0, pubkey, created_at, kind, tags, content ])
-  const digest = Buffer.from(sha256(preimg)).toString('hex')
+  const preimg = Buff.json([ 0, pubkey, created_at, kind, tags, content ])
+  const digest = sha256(preimg).hex
   if (digest !== id) return false
   return schnorr.verify(sig, id, pubkey)
 }

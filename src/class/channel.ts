@@ -7,53 +7,52 @@ import type { NostrClient } from '@/class/client.js'
 
 import type {
   ConnectionToken,
-  PeerEventMap,
-  PeerManagerConfig,
-  PeerManagerOptions,
+  ChannelConfig,
+  ChannelManagerOptions,
   ResponseMessage,
-  PeerConnection
+  ChannelEventMap,
+  ChannelMember
 } from '@/types/index.js'
 
-const DEFAULT_CONFIG : () => PeerManagerConfig = () => {
+const DEFAULT_CONFIG : () => ChannelConfig = () => {
   return {
     debug   : false,
     policy  : DEFAULT_POLICY(),
     profile : {},
-    relays  : [],
     timeout : 30,
     verbose : false,
   }
 }
 
-export class PeerManager extends EventEmitter<PeerEventMap> {
+export class ChannelManager extends EventEmitter<ChannelEventMap> {
 
-  private readonly _config  : PeerManagerConfig
+  private readonly _config  : ChannelConfig
   private readonly _client  : NostrClient
 
   private readonly _invites : Set<string> = new Set()
-  private readonly _peers   : Map<string, PeerConnection> = new Map()
+  private readonly _members : Map<string, ChannelMember>  = new Map()
   private readonly _timers  : Map<string, NodeJS.Timeout> = new Map()
 
   constructor (
     client  : NostrClient,
-    options : PeerManagerOptions = {}
+    options : ChannelManagerOptions = {}
   ) {
     super()
     // Set the client.
     this._client = client
     // Set the configuration.
-    this._config = get_peer_config(options)
+    this._config = get_channel_config(options)
     // Add the sessions to the active session map.
-    for (const peer of options.peers ?? []) {
+    for (const mbr of options.members ?? []) {
       // Add the token to the active session map.
-      this._peers.set(peer.pubkey, peer)
+      this._members.set(mbr.pubkey, mbr)
     }
 
     // Handle the request messages.
     this._client.on('response', this._handler.bind(this))
   }
 
-  get config () : PeerManagerConfig {
+  get config () : ChannelConfig {
     return this._config
   }
 
@@ -61,20 +60,20 @@ export class PeerManager extends EventEmitter<PeerEventMap> {
     return Array.from(this._invites)
   }
 
-  get peers () : PeerConnection[] {
-    return Array.from(this._peers.values())
+  get members () : ChannelMember[] {
+    return Array.from(this._members.values())
   }
 
-  _confirm (challenge : string, pubkey : string) {
-    const peer : PeerConnection = { pubkey, created_at : now() }
+  _join (challenge : string, pubkey : string) {
+    const mbr : ChannelMember = { pubkey, created_at : now() }
     // Add the invite to the peers map.
-    this._peers.set(pubkey, peer)
+    this._members.set(pubkey, mbr)
     // Delete the invite from the invites map.
     this._invites.delete(challenge)
     // Delete the timer from the timers map.
     this._timers.delete(challenge)
     // Emit the invitation to the client.
-    this.emit('confirmed', peer)
+    this.emit('join', mbr)
   }
 
   _handler (res : ResponseMessage) {
@@ -86,7 +85,7 @@ export class PeerManager extends EventEmitter<PeerEventMap> {
         // Get the sender of the response.
         const sender = res.env.pubkey
         // If the invite is found, confirm the invitation.
-        this._confirm(res.result, sender)
+        this._join(res.result, sender)
       }
     } catch (err) {
       this.emit('error', err)
@@ -109,22 +108,18 @@ export class PeerManager extends EventEmitter<PeerEventMap> {
     // Add the timer to the timers map.
     this._timers.set(challenge, timer)
     // Emit the invitation to the client.
-    this.emit('invited', challenge)
+    this.emit('invite', challenge)
   }
 
-  invite (
-    name    : string,
-    relays? : string[]
-  ) : ConnectionToken {
+  invite () : ConnectionToken {
     // Create a new secret.
     const secret = Buff.random(32).hex
     // Create a new connection token.
     const token : Omit<ConnectionToken, 'secret'> = {
-      name   : name,
-      policy : this.config.policy,
-      pubkey : this._client.pubkey,
-      relays : relays ?? this.config.relays,
-      ...this.config.profile
+      policy  : this.config.policy,
+      profile : this.config.profile,
+      pubkey  : this._client.pubkey,
+      relays  : this._client.relays
     }
     // Register the token with the invite manager.
     this._invite(secret)
@@ -140,14 +135,14 @@ export class PeerManager extends EventEmitter<PeerEventMap> {
     const is_cancelled = this._invites.delete(challenge)
     if (is_cancelled) {
       this._timers.delete(challenge)
-      this.emit('cancelled', challenge)
+      this.emit('cancel', challenge)
     }
   }
 }
 
-function get_peer_config (
-  options : PeerManagerOptions
-) : PeerManagerConfig {
-  const { peers, ...rest } = options
+function get_channel_config (
+  options : ChannelManagerOptions
+) : ChannelConfig {
+  const { members, ...rest } = options
   return { ...DEFAULT_CONFIG(), ...rest }
 }

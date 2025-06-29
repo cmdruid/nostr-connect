@@ -6,27 +6,17 @@ import { now }              from '@vbyte/micro-lib/util'
 import * as CONST from '@/const.js'
 
 import {
-  PublishedEvent,
   SessionToken,
   RequestMessage,
   ConnectionToken,
-  PermissionPolicy,
   SessionEventMap,
   SessionManagerOptions,
   SessionManagerConfig
 } from '@/types/index.js'
 
-const DEFAULT_POLICY : () => PermissionPolicy = () => {
-  return {
-    methods : CONST.DEFAULT_METHOD_PERMS,
-    kinds   : CONST.DEFAULT_KIND_PERMS
-  }
-}
-
 const DEFAULT_CONFIG : () => SessionManagerConfig = () => {
   return {
-    policy  : DEFAULT_POLICY(),
-    timeout : 30,
+    timeout : 5
   }
 }
 
@@ -67,7 +57,9 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
 
   get names () : Map<string, SessionToken> {
     return new Map(
-      Array.from(this._active.values()).map(session => [ session.name, session ])
+      Array.from(this._active.values()).map(session => [
+        session.profile.name ?? session.pubkey, session
+      ])
     )
   }
 
@@ -85,7 +77,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     // Delete the timer from the timers map.
     this._timers.delete(token.pubkey)
     // Check if the session name is already in use.
-    const existing = this.names.get(token.name)
+    const existing = this.names.get(token.profile.name ?? token.pubkey)
     // If there is an existing session, delete it.
     if (existing) this._active.delete(existing.pubkey)
     // Add the token to the active session map.
@@ -93,8 +85,6 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     // Emit the token activation to the client.
     this.emit('activated', token)
   }
-
-
 
   _register (session : SessionToken) : void {
     // Set the timeout for the token.
@@ -122,6 +112,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
    */
   _handler (req : RequestMessage) {
     try {
+      this.emit('info', 'received request:', req)
       // Get the sender's public key.
       const sender_pk = req.env.pubkey
       // If the token is found in the pending session map,
@@ -142,7 +133,6 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
         case CONST.REQ_METHOD.GET_PUBKEY:
           // Get the client's public key.
           const pubkey = this._client.pubkey
-          console.log('sending pubkey:', pubkey)
           // Send a response to the client.
           this._client.respond(req.id, sender_pk, pubkey, session.relays)
           break
@@ -160,35 +150,51 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     return this._active.get(pubkey)
   }
 
+  async negotiate (connect_tkn : ConnectionToken) {
+    // Unpack the connection token.
+    const { secret, ...token } = connect_tkn
+    // Update our subscription list.
+    await this._client.subscribe(token.relays)
+    // Create the session token.
+    const session = { ...token, created_at: now() }
+    // Add the session token to the pending session map.
+    this._pending.set(session.pubkey, session)
+    // Send a response to the issuing client.
+    this._client.respond(secret, token.pubkey, secret, token.relays)
+    // Emit the pending session token to the client.
+    this.emit('pending', session)
+    // Return the session token.
+    return session
+  }
+
   /**
    * Registers a connection token with the client.
    * @param connect_tkn - The connection token to register.
    * @returns The response from the client.
    */
-  async connect (connect_tkn : ConnectionToken) : Promise<PublishedEvent> {
-    // Assert that the session name is required.
-    Assert.exists(connect_tkn.name, 'session name is required')
-    // Unpack the connection token.
-    const { secret, ...token } = connect_tkn
-    // Update our subscription list.
-    await this._client.subscribe(token.relays)
-    // Send a response to the issuing client.
-    const res = await this._client.respond (
-      secret, token.pubkey, secret, token.relays
-    )
-    // If the message is not accepted, return early.
-    if (!res.ok) return res
-    // Create the session token.
-    const session = { ...token, created_at: now() }
-    // Add the session token to the pending session map.
-    this._pending.set(session.pubkey, session)
-    // Emit the pending session token to the client.
-    this.emit('pending', session)
-    // Return the response.
-    return res
+  async connect (invite : ConnectionToken) : Promise<SessionToken> {
+    // Return a promise to activate the session.
+    return new Promise((resolve, reject) => {
+      // Set the timeout value.
+      const timeout = this.config.timeout * 1000
+      // Initialize the timer.
+      let timer = setTimeout(() => {
+        clearTimeout(timer)
+        reject('timeout')
+      }, timeout)
+      // Register the listener.
+      this.within('activated', (token) => {
+        if (token.pubkey === invite.pubkey) {
+          clearTimeout(timer)
+          resolve(token)
+        }
+      }, timeout)
+      // Register the invite
+      this.negotiate(invite)
+    })
   }
 
-  async update (session : SessionToken) : Promise<void> {
+  update (session : SessionToken) {
     // Get the session token from the active session map.
     const token = this._active.get(session.pubkey)
     // If the session token is not found, return early.

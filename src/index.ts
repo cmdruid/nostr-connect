@@ -1,7 +1,8 @@
 export { ConnectToken } from './lib/encoder.js'
 
 export * from './class/client.js'
-export * from './class/peer.js'
+export * from './class/channel.js'
+export * from './class/request.js'
 export * from './class/signer.js'
 export * from './class/session.js'
 
