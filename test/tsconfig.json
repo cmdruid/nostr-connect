@@ -2,10 +2,9 @@
   "compilerOptions": {
     "baseUrl": "..",
     "paths": {
-      "@/*" : [ "./src/*" ],
-      "@dist/*"   : [ "./dist/*" ],
-      "@script/*" : [ "./test/script/*" ],
-      "@test/*"   : [ "./test/src/*" ]
+      "@/*"     : [ "src/*"   ],
+      "@dist/*" : [ "dist/*"  ],
+      "@test/*" : [ "test/*"  ]
     },
     "module": "NodeNext",
     "target": "ESNext",
@@ -29,6 +28,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": [ "dist", "node_modules" ],
+  "exclude": [ "node_modules" ],
   "include": [ "**/*.ts" ]
 }

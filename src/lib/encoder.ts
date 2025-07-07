@@ -1,7 +1,6 @@
 import { Assert } from '@vbyte/micro-lib/assert'
 
 import {
-  DEFAULT_POLICY,
   decode_permissions,
   encode_permissions
 } from '@/lib/perms.js'
@@ -77,7 +76,7 @@ export function decode_connect_url (str : string) : InviteToken {
   // Get the permissions.
   const pstr   = params.get('perms')  || undefined
   // Decode the permissions.
-  const policy = pstr ? decode_permissions(pstr) : DEFAULT_POLICY()
+  const policy = pstr ? decode_permissions(pstr) : { methods : {}, kinds : {} }
   // Return the session token.
   return { policy, profile, pubkey, relays, secret }
 }

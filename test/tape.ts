@@ -1,18 +1,16 @@
-import tape from 'tape'
-
-import { sleep }         from '@vbyte/micro-lib/util'
-import { NostrRelay }    from './script/relay.js'
+import tape           from 'tape'
+import { sleep }      from '@vbyte/micro-lib/util'
+import { NostrRelay } from './scripts/relay.js'
 
 import {
   create_agent,
   create_signer
-} from './src/lib/client.js'
+} from './lib/create.js'
 
-import type { TestContext } from './src/types.js'
+import type { TestContext } from './types.js'
 
-import ping_test    from './src/case/ping.test.js'
-// import connect_test from './src/case/connect.test.js'
-import request_test from './src/case/request.test.js'
+import ping_test    from './case/ping.test.js'
+import request_test from './case/request.test.js'
 
 tape('nostr-connect test suite', async t => {
 

@@ -6,7 +6,7 @@ import { now }              from '@vbyte/micro-lib/util'
 import * as CONST from '@/const.js'
 
 import {
-  AgentSession,
+  SignerSession,
   RequestMessage,
   InviteToken,
   SessionEventMap,
@@ -25,8 +25,8 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
   private readonly _config  : SessionManagerConfig
   private readonly _socket  : NostrSocket
 
-  private readonly _active  : Map<string, AgentSession>   = new Map()
-  private readonly _pending : Map<string, AgentSession>   = new Map()
+  private readonly _active  : Map<string, SignerSession>   = new Map()
+  private readonly _pending : Map<string, SignerSession>   = new Map()
   private readonly _timers  : Map<string, NodeJS.Timeout> = new Map()
 
   constructor (
@@ -45,7 +45,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     }
   }
 
-  get active () : AgentSession[] {
+  get active () : SignerSession[] {
     return Array.from(this._active.values())
   }
 
@@ -53,7 +53,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     return this._config
   }
 
-  get names () : Map<string, AgentSession> {
+  get names () : Map<string, SignerSession> {
     return new Map(
       Array.from(this._active.values()).map(session => [
         session.profile.name ?? session.pubkey, session
@@ -61,7 +61,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     )
   }
 
-  get pending () : AgentSession[] {
+  get pending () : SignerSession[] {
     return Array.from(this._pending.values())
   }
 
@@ -84,7 +84,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     this.emit('activated', token)
   }
 
-  _register (session : AgentSession) : void {
+  _register (session : SignerSession) : void {
     // Set the timeout for the token.
     const timeout = this.config.negotiate_timeout * 1000
     // If the token is already registered, return early.
@@ -146,7 +146,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     }
   }
 
-  get (pubkey : string) : AgentSession | undefined {
+  get (pubkey : string) : SignerSession | undefined {
     return this._active.get(pubkey)
   }
 
@@ -166,13 +166,13 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     // Return the session token.
     return session
   }
-
+  
   /**
    * Registers a connection token with the client.
-   * @param connect_tkn - The connection token to register.
+   * @param invite - The connection token to register.
    * @returns The response from the client.
    */
-  async connect (invite : InviteToken) : Promise<AgentSession> {
+  join (invite : InviteToken) : Promise<SignerSession> {
     // Return a promise to activate the session.
     return new Promise((resolve, reject) => {
       // Set the timeout value.
@@ -194,7 +194,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     })
   }
 
-  update (session : AgentSession) {
+  update (session : SignerSession) {
     // Get the session token from the active session map.
     const token = this._active.get(session.pubkey)
     // If the session token is not found, return early.

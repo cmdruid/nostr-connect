@@ -1,7 +1,7 @@
 import type { AgentProfile }     from './agent.js'
 import type { PermissionPolicy } from './request.js'
 
-export interface AgentSession {
+export interface SignerSession {
   created_at : number
   policy     : PermissionPolicy
   profile    : AgentProfile
@@ -14,5 +14,5 @@ export interface SessionManagerConfig {
 }
 
 export interface SessionManagerOptions extends Partial<SessionManagerConfig> {
-  sessions? : AgentSession[]
+  sessions? : SignerSession[]
 }

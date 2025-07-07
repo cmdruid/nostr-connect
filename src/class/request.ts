@@ -11,7 +11,7 @@ import type {
   PermissionPolicy,
   PermissionRequest,
   RequestEventMap,
-  AgentSession,
+  SignerSession,
   RequestQueueConfig,
   RequestQueueOptions
 } from '@/types/index.js'
@@ -95,7 +95,7 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
     this._timers.delete(req.id)
   }
 
-  _update (session : AgentSession, changes : Partial<PermissionPolicy>) {
+  _update (session : SignerSession, changes : Partial<PermissionPolicy>) {
     // Create a new policy with the changes.
     const policy = update_policy(session.policy, changes)
     // Update the session with the new policy.

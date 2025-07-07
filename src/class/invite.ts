@@ -1,19 +1,29 @@
-import { Buff }         from '@vbyte/buff'
-import { EventEmitter } from '@/class/emitter.js'
-import { NostrSocket }  from '@/class/socket.js'
+import { Buff }           from '@vbyte/buff'
+import { EventEmitter }   from '@/class/emitter.js'
+import { NostrSocket }    from '@/class/socket.js'
+import { DEFAULT_POLICY } from '@/const.js'
 
 import type {
   ResponseMessage,
   InviteEventMap,
   InviteToken,
-  InviteConfig
+  InviteConfig,
+  JoinEvent
 } from '@/types/index.js'
+
+const DEFAULT_CONFIG : () => InviteConfig = () => {
+  return {
+    policy  : DEFAULT_POLICY(),
+    profile : {},
+    relays  : []
+  }
+}
 
 const DEFAULT_TIMEOUT = 30
 
 export class InviteManager extends EventEmitter<InviteEventMap> {
 
-  private readonly _invites : Set<string> = new Set()
+  private readonly _pending : Set<string> = new Set()
   private readonly _socket  : NostrSocket
   private readonly _timers  : Map<string, NodeJS.Timeout> = new Map()
   private readonly _timeout : number
@@ -29,8 +39,8 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
     this._timeout = timeout
   }
 
-  get invites () : string[] {
-    return Array.from(this._invites)
+  get pending () : string[] {
+    return Array.from(this._pending)
   }
 
   async handler (msg : ResponseMessage) {
@@ -38,7 +48,7 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
       // If the response is not an accept, return early.
       if (msg.type !== 'accept') return
       // If the invite is not found, return early.
-      if (this._invites.has(msg.result)) {
+      if (this._pending.has(msg.result)) {
         // Create a request for the public key.
         const req = { method : 'get_public_key' }
         // Request the public key from the device.
@@ -55,11 +65,11 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
 
   _create (token : InviteToken) {
     // Add the token to the invites map.
-    this._invites.add(token.secret)
+    this._pending.add(token.secret)
     // Set a timeout method to delete the token from the session manager.
     const timer = setTimeout(() => {
       // Delete the token from the session map.
-      this._invites.delete(token.secret)
+      this._pending.delete(token.secret)
       this._timers.delete(token.secret)
       // Emit the token cancellation to the client.
       this.emit('expired', token.secret)
@@ -72,20 +82,19 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
 
   _join (secret : string, pubkey : string) {
     // Delete the invite from the invites map.
-    this._invites.delete(secret)
+    this._pending.delete(secret)
     // Delete the timer from the timers map.
     this._timers.delete(secret)
     // Emit the invitation to the client.
     this.emit('join', { pubkey, secret })
   }
 
-  create (config : InviteConfig) : InviteToken {
+  create (options : Partial<InviteConfig> = {}) : InviteToken {
     // Create a new connection token.
     const token : InviteToken = {
-      policy  : config.host_policy,
-      profile : config.host_profile,
+      ...DEFAULT_CONFIG(),
+      ...options,
       pubkey  : this._socket.pubkey,
-      relays  : this._socket.relays,
       secret  : Buff.random(32).hex
     }
     // Register the token with the invite manager.
@@ -99,9 +108,29 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
    * @param challenge - The challenge of the invitation to cancel.
    */
   cancel (challenge : string) {
-    if (this._invites.delete(challenge)) {
+    if (this._pending.delete(challenge)) {
       this._timers.delete(challenge)
       this.emit('cancel', challenge)
     }
+  }
+
+  listen (token : InviteToken) : Promise<JoinEvent> {
+    // Define the connection timeout.
+    const timeout = this._timeout * 1000
+    // Subscribe to the relays.
+    this._socket.subscribe(token.relays)
+    // Return a promise to resolve the session.
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer)
+        reject(new Error('invite timeout'))
+      }, timeout)
+      this.within('join', (event) => {
+        if (event.secret === token.secret) {
+          clearTimeout(timer)
+          resolve(event)
+        }
+      }, timeout)
+    })
   }
 }

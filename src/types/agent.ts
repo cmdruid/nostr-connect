@@ -1,6 +1,6 @@
 import type { PermissionPolicy } from './request.js'
 
-export interface DeviceSession {
+export interface AgentSession {
   created_at : number
   pubkey     : string
   secret     : string
@@ -13,11 +13,11 @@ export interface AgentProfile {
 }
 
 export interface SignerAgentConfig {
-  host_policy    : PermissionPolicy
-  host_profile   : AgentProfile
-  invite_timeout : number
+  policy  : PermissionPolicy
+  profile : AgentProfile
+  timeout : number
 }
 
 export interface SignerAgentOptions extends Partial<SignerAgentConfig> {
-  device? : DeviceSession
+  session? : AgentSession
 }

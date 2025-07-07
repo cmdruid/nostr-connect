@@ -28,6 +28,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": [ "dist", "node_modules" ],
+  "exclude": [ "dist", "node_modules", "script", "test" ],
   "include": [ "src/**/*.ts" ]
 }

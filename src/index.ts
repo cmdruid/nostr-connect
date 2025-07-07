@@ -1,4 +1,4 @@
-export { InviteEncoder as ConnectToken } from './lib/encoder.js'
+export { InviteEncoder } from './lib/encoder.js'
 
 export * from './class/agent.js'
 export * from './class/client.js'

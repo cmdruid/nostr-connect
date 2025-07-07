@@ -64,10 +64,9 @@ export default function (ctx : TestContext) {
         t.pass('responded to request')
       })
 
-      const invite = await agent.invite(relays)
-      
-      const prom1 = client.connect(invite)
-      const prom2 = agent.connect(invite)
+      const invite = agent.invite.create({ relays })
+      const prom1  = agent.invite.listen(invite)
+      const prom2  = client.session.join(invite)
 
       await Promise.all([ prom1, prom2 ])
 

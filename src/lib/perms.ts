@@ -9,15 +9,8 @@ import type {
   PermissionRequest,
   PermissionUpdate,
   RequestMessage,
-  AgentSession
+  SignerSession
 } from '@/types/index.js'
-
-export const DEFAULT_POLICY : () => PermissionPolicy = () => {
-  return {
-    methods : {},
-    kinds   : {}
-  }
-}
 
 export function parse_policy (policy : unknown) : PermissionPolicy {
   return Schema.perm.policy.parse(policy)
@@ -39,7 +32,7 @@ export function update_policy (
 
 export function create_permission_request (
   message : RequestMessage,
-  token   : AgentSession
+  token   : SignerSession
 ) : PermissionRequest {
   return {
     id         : message.id,

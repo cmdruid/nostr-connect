@@ -29,20 +29,25 @@
       "import": "./dist/lib/index.js",
       "types": "./dist/lib/index.d.ts",
       "default": "./dist/lib/index.js"
+    },
+    "./schema": {
+      "import": "./dist/schema/index.js",
+      "types": "./dist/schema/index.d.ts",
+      "default": "./dist/schema/index.js"
     }
   },
   "scripts": {
-    "build": "./script/build.sh",
+    "build": "./scripts/build.sh",
     "demo:build": "cd demo && npm run build",
     "demo:dev": "cd demo && npm run dev",
-    "loader": "tsx --tsconfig ./test/tsconfig.json",
-    "relay": "tsx test/script/relay.ts",
-    "pkg": "npm test | faucet && npm run build",
-    "release": "./script/release.sh",
+    "package": "npm test | faucet && npm run build",
+    "relay": "tsx test/scripts/relay.ts",
+    "release": "./scripts/release.sh",
     "scratch": "tsx test/scratch.ts",
-    "test": "tsx test/tape.ts",
-    "test:client": "tsx test/script/client.ts",
-    "test:signer": "tsx test/script/signer.ts"
+    "script": "tsx --tsconfig ./test/tsconfig.json",
+    "test": "npm run script test/tape.ts",
+    "test:client": "tsx test/scripts/client.ts",
+    "test:signer": "tsx test/scripts/signer.ts"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",

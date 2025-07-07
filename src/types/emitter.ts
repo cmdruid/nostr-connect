@@ -1,7 +1,7 @@
-import type { DeviceSession }     from './agent.js'
+import type { AgentSession }     from './agent.js'
 import type { SignedEvent }       from './event.js'
 import type { PermissionRequest } from './request.js'
-import type { AgentSession }      from './session.js'
+import type { SignerSession }      from './session.js'
 import type { PublishReceipt }    from './socket.js'
 
 import type {
@@ -42,7 +42,7 @@ export interface SocketEventMap extends BaseEventMap {
 
 export interface AgentEventMap extends BaseEventMap {
   invite  : [ InviteToken ]
-  join    : [ DeviceSession ]
+  join    : [ AgentSession ]
   close   : [ void ]
   ready   : [ void ]
 }
@@ -53,16 +53,16 @@ export interface RequestEventMap extends BaseEventMap {
   deny    : [ PermissionRequest, string ]
   error   : any[]
   timeout : [ PermissionRequest ]
-  update  : [ AgentSession ]
+  update  : [ SignerSession ]
 }
 
 export interface SessionEventMap extends BaseEventMap {
   message   : [ RequestMessage ]
-  activated : [ AgentSession ]
+  activated : [ SignerSession ]
   cleared   : [ void ]
-  expired   : [ AgentSession ]
+  expired   : [ SignerSession ]
   request   : [ PermissionRequest ]
   revoked   : [ string ]
-  pending   : [ AgentSession ]
-  updated   : [ Partial<AgentSession> ]
+  pending   : [ SignerSession ]
+  updated   : [ Partial<SignerSession> ]
 }

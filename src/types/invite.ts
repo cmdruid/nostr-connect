@@ -3,8 +3,9 @@ import type { BaseEventMap }     from './emitter.js'
 import type { PermissionPolicy } from './request.js'
 
 export interface InviteConfig {
-  host_policy  : PermissionPolicy
-  host_profile : AgentProfile
+  policy  : PermissionPolicy
+  profile : AgentProfile
+  relays  : string[]
 }
 
 export interface InviteToken {

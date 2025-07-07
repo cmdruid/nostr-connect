@@ -1,4 +1,4 @@
-import type { AgentSession } from './session.js'
+import type { SignerSession } from './session.js'
 
 export type PermissionUpdate    = Partial<PermissionPolicy>
 export type RequestQueueOptions = Partial<RequestQueueConfig>
@@ -12,7 +12,7 @@ export interface PermissionRequest {
   id      : string
   method  : string
   params  : string[] | undefined
-  session : AgentSession
+  session : SignerSession
   stamp   : number
 }
 

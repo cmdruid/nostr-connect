@@ -1,3 +1,5 @@
+import { PermissionPolicy } from "./types/request.js"
+
 export const DOMAIN_TAG  = 'nostr-connect'
 export const REQ_TIMEOUT = 5000
 export const EVENT_KIND  = 24133
@@ -17,16 +19,27 @@ export const AUTH_METHOD = {
   NIP44_ENCRYPT : 'nip44_encrypt'
 }
 
-export const DEFAULT_KIND_PERMS : Record<number, boolean> = {
-  0 : true,
-  1 : true,
-  4 : true
+export const DEFAULT_POLICY : () => PermissionPolicy = () => {
+  return {
+    methods : {},
+    kinds   : {}
+  }
 }
 
-export const DEFAULT_METHOD_PERMS : Record<string, boolean> = {
-  [AUTH_METHOD.SIGN_EVENT]    : true,
-  [AUTH_METHOD.NIP04_ENCRYPT] : true,
-  [AUTH_METHOD.NIP04_DECRYPT] : true,
-  [AUTH_METHOD.NIP44_ENCRYPT] : true,
-  [AUTH_METHOD.NIP44_DECRYPT] : true
+export const DEFAULT_KIND_PERMS : () => Record<number, boolean> = () => {
+  return {
+    0 : true,
+    1 : true,
+    4 : true
+  }
+}
+
+export const DEFAULT_METHOD_PERMS : () => Record<string, boolean> = () => {
+  return {
+    [AUTH_METHOD.SIGN_EVENT]    : true,
+    [AUTH_METHOD.NIP04_ENCRYPT] : true,
+    [AUTH_METHOD.NIP04_DECRYPT] : true,
+    [AUTH_METHOD.NIP44_ENCRYPT] : true,
+    [AUTH_METHOD.NIP44_DECRYPT] : true
+  }
 }

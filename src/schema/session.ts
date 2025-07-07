@@ -1,12 +1,12 @@
 import { z }       from 'zod'
 import * as base   from '@vbyte/micro-lib/schema'
-import { profile } from './agent.js'
+import { profile } from './invite.js'
 import { policy }  from './perm.js'
 
 import type {
   SessionManagerConfig,
   SessionManagerOptions,
-  AgentSession
+  SignerSession
 } from '@/types/index.js'
 
 export const token = base.zod.object({
@@ -15,7 +15,7 @@ export const token = base.zod.object({
   profile    : profile,
   pubkey     : base.hex32,
   relays     : base.str.array(),
-}) satisfies z.ZodType<AgentSession>
+}) satisfies z.ZodType<SignerSession>
 
 export const config = base.zod.object({
   negotiate_timeout : base.num,

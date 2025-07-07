@@ -7,7 +7,7 @@ import {
   SignerDeviceAPI,
   SignerClientOptions,
   InviteToken,
-  AgentSession,
+  SignerSession,
   PermissionRequest,
   PermissionPolicy
 } from '@/index.js'
@@ -60,8 +60,8 @@ export class SignerClient extends EventEmitter {
     return this._socket
   }
 
-  connect (invite : InviteToken) : Promise<AgentSession> {
-    return this._session.connect(invite)
+  join (invite : InviteToken) : Promise<SignerSession> {
+    return this._session.join(invite)
   }
 
   close () {
