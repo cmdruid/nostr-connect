@@ -1,13 +1,11 @@
-import type { NostrSocket, RequestQueue, SessionManager, SimpleSigner } from '@/source'
+import type { SignerClient, SimpleSigner } from '@/source'
 
 export type LogType      = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
 export type ClientStatus = 'online' | 'offline' | 'locked' | 'connecting' | 'loading'
 
 export interface ClientState {
-  request : RequestQueue
-  session : SessionManager
+  client  : SignerClient
   signer  : SimpleSigner
-  socket  : NostrSocket
 }
 
 export interface ClientController extends ClientState {

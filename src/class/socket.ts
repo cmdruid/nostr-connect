@@ -154,6 +154,8 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     } catch (err) {
       // Emit the bounced event to the client emitter.
       this.emit('bounced', event, parse_error(err))
+      // Emit the error to the client emitter.
+      this.emit('error', err)
     }
   }
 

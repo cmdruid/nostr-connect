@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import '@/styles/sessions.css'
 
-import { AgentSession, PermissionPolicy } from '@/types/index.js'
-import { ConnectToken } from '@/index.js'
-import { useClientCtx } from '@/demo/context/client.js'
+import { PermissionPolicy, SignerSession } from '@/types/index.js'
+import { InviteEncoder } from '@/index.js'
+import { useClientCtx }  from '@/demo/context/client.js'
 import { PermissionsDropdown } from './permissions.js'
 
 export function SessionsView () {
   const ctx = useClientCtx()
 
-  const [activeSessions, setActiveSessions]   = useState<AgentSession[]>([])
-  const [pendingSessions, setPendingSessions] = useState<AgentSession[]>([])
+  const [activeSessions, setActiveSessions]   = useState<SignerSession[]>([])
+  const [pendingSessions, setPendingSessions] = useState<SignerSession[]>([])
   const [connectString, setConnectString]     = useState('')
   const [error, setError] = useState<string | null>(null)
   const [expandedPermissions, setExpandedPermissions] = useState<Set<string>>(new Set())
@@ -21,36 +21,36 @@ export function SessionsView () {
   // Update sessions when they change
   useEffect(() => {
     const updateSessions = () => {
-      setActiveSessions(ctx.session?.active   || [])
-      setPendingSessions(ctx.session?.pending || [])
+      setActiveSessions(ctx.client.session.active   || [])
+      setPendingSessions(ctx.client.session.pending || [])
     }
 
     // Initial update
     updateSessions()
 
     // Listen for session changes
-    ctx.session?.on('activated', updateSessions)
-    ctx.session?.on('pending',   updateSessions)
-    ctx.session?.on('updated',   updateSessions)
-    ctx.session?.on('revoked',   updateSessions)
+    ctx.client.session.on('activated', updateSessions)
+    ctx.client.session.on('pending',   updateSessions)
+    ctx.client.session.on('updated',   updateSessions)
+    ctx.client.session.on('revoked',   updateSessions)
 
     return () => {
-      ctx.session?.off('activated', updateSessions)
-      ctx.session?.off('pending',   updateSessions)
-      ctx.session?.off('updated',   updateSessions)
-      ctx.session?.off('revoked',   updateSessions)
+      ctx.client.session.off('activated', updateSessions)
+      ctx.client.session.off('pending',   updateSessions)
+      ctx.client.session.off('updated',   updateSessions)
+      ctx.client.session.off('revoked',   updateSessions)
     }
-  }, [ ctx.session ])
+  }, [ ctx.client.session ])
 
   const handleRevokeSession = (pubkey: string) => {
-    ctx.session?.revoke(pubkey)
+    ctx.client.session.revoke(pubkey)
   }
 
   const handleActivateSession = async () => {
     try {
       setError(null)
-      const token = ConnectToken.decode(connectString)
-      await ctx.session?.connect(token)
+      const token = InviteEncoder.decode(connectString)
+      await ctx.client.session.join(token)
       setConnectString('')
     } catch (err) {
       console.error(err)
@@ -105,7 +105,7 @@ export function SessionsView () {
         policy: editingPermissions[pubkey] || {}
       }
 
-      ctx.session?.update(updatedSession)
+      ctx.client.session.update(updatedSession)
       
       // Close the dropdown after successful update
       const newExpanded = new Set(expandedPermissions)

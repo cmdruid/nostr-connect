@@ -1,9 +1,9 @@
-import { NostrSocket }      from '@/class/socket.js'
-import { EventEmitter }     from '@/class/emitter.js'
-import { Assert }           from '@vbyte/micro-lib/assert'
-import { now }              from '@vbyte/micro-lib/util'
-
-import * as CONST from '@/const.js'
+import { NostrSocket }         from '@/class/socket.js'
+import { EventEmitter }        from '@/class/emitter.js'
+import { Assert }              from '@vbyte/micro-lib/assert'
+import { now }                 from '@vbyte/micro-lib/util'
+import { create_perm_request } from '@/lib/perms.js'
+import * as CONST              from '@/const.js'
 
 import {
   SignerSession,
@@ -13,7 +13,6 @@ import {
   SessionManagerOptions,
   SessionManagerConfig
 } from '@/types/index.js'
-import { create_permission_request } from '@/lib/perms.js'
 
 const DEFAULT_CONFIG : () => SessionManagerConfig = () => {
   return {
@@ -136,7 +135,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
           this._socket.accept(msg.id, sender_pk, pubkey, session.relays)
           break
         default:
-          const req = create_permission_request(msg, session)
+          const req = create_perm_request(msg, session)
           this.emit('request', req)
           break
       }
@@ -150,9 +149,9 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     return this._active.get(pubkey)
   }
 
-  async negotiate (connect_tkn : InviteToken) {
+  async connect (invite : InviteToken) {
     // Unpack the connection token.
-    const { secret, ...token } = connect_tkn
+    const { secret, ...token } = invite
     // Update our subscription list.
     await this._socket.subscribe(token.relays)
     // Create the session token.
@@ -190,7 +189,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
         }
       }, timeout)
       // Register the invite
-      this.negotiate(invite)
+      this.connect(invite)
     })
   }
 

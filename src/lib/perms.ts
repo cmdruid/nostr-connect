@@ -30,7 +30,7 @@ export function update_policy (
   return updated
 }
 
-export function create_permission_request (
+export function create_perm_request (
   message : RequestMessage,
   token   : SignerSession
 ) : PermissionRequest {
@@ -43,7 +43,7 @@ export function create_permission_request (
   }
 }
 
-export function check_permission_request (
+export function check_perm_request (
   req : PermissionRequest
 ) : boolean | null {
   // Get the request details.
@@ -95,7 +95,7 @@ export function encode_permissions (policy : PermissionPolicy) {
 
 export function decode_permissions (str : string) : PermissionPolicy {
   const methods : Record<string, boolean> = {}
-  const kinds   : Record<number, boolean> = {}
+  const kinds   : Record<string, boolean> = {}
   // Split the permission string into entries.
   const entries = str.split(',')
   // Iterate over the entries.
@@ -108,14 +108,12 @@ export function decode_permissions (str : string) : PermissionPolicy {
       const [ key, value ] = entry.split(':')
       // Assert that the key is sign_event.
       Assert.ok(key === 'sign_event', 'invalid permission entry: ' + entry)
-      // Ensure that the value is an integer.
-      const kind = parseInt(value)
       // Assert that the kind is a valid integer.
-      Assert.is_uint(kind)
+      Assert.is_uint(parseInt(value))
       // Mark the sign_event permission as true.
       methods[key] = true
       // Mark the kind as true.
-      kinds[kind]  = true
+      kinds[value] = true
     } else {
       // Add the value to the current value.
       methods[entry] = true

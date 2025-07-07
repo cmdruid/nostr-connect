@@ -71,7 +71,7 @@ export function RequestsView() {
   // Update requests when they change
   useEffect(() => {
     const updateRequests = () => {
-      const rawRequests = ctx.request?.queue || []
+      const rawRequests = ctx.client.request.queue || []
       setPendingRequests(rawRequests.map(transformRequest))
     }
 
@@ -79,18 +79,18 @@ export function RequestsView() {
     updateRequests()
 
     // Listen for request changes
-    if (ctx.request) {
-      ctx.request.on('request', updateRequests)
-      ctx.request.on('approved', updateRequests)
-      ctx.request.on('denied', updateRequests)
+    if (ctx.client.request) {
+      ctx.client.request.on('prompt',  updateRequests)
+      ctx.client.request.on('approve', updateRequests)
+      ctx.client.request.on('deny',    updateRequests)
 
       return () => {
-        ctx.request.off('request', updateRequests)
-        ctx.request.off('approved', updateRequests)
-        ctx.request.off('denied', updateRequests)
+        ctx.client.request.off('prompt',  updateRequests)
+        ctx.client.request.off('approve', updateRequests)
+        ctx.client.request.off('deny',    updateRequests)
       }
     }
-  }, [ctx.request])
+  }, [ctx.client.request])
 
   const toggleExpanded = (requestId: string) => {
     const newExpanded = new Set(expanded)
@@ -103,38 +103,38 @@ export function RequestsView() {
   }
 
   const handleApprove = (requestId: string) => {
-    if (!ctx.request) return
-    const request = ctx.request.queue.find((req: PermissionRequest) => req.id === requestId)
+    if (!ctx.client.request) return
+    const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
     if (request) {
-      ctx.request.approve(request)
+      ctx.client.request.approve(request)
     }
   }
 
   const handleDeny = (requestId: string) => {
-    if (!ctx.request) return
-    const request = ctx.request.queue.find((req: PermissionRequest) => req.id === requestId)
+    if (!ctx.client.request) return
+    const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
     if (request) {
-      ctx.request.deny(request, 'denied by user')
+      ctx.client.request.deny(request, 'denied by user')
     }
   }
 
   const handleApproveAll = () => {
-    if (!ctx.request) return
-    ctx.request.queue.forEach((request: PermissionRequest) => {
-      ctx.request.approve(request)
+    if (!ctx.client.request) return
+    ctx.client.request.queue.forEach((request: PermissionRequest) => {
+      ctx.client.request.approve(request)
     })
   }
 
   const handleDenyAll = () => {
-    if (!ctx.request) return
-    ctx.request.queue.forEach((request: PermissionRequest) => {
-      ctx.request.deny(request, 'denied by user')
+    if (!ctx.client.request) return
+    ctx.client.request.queue.forEach((request: PermissionRequest) => {
+      ctx.client.request.deny(request, 'denied by user')
     })
   }
 
   const handleApproveAllKinds = (kind: number) => {
-    if (!ctx.request) return
-    ctx.request.queue
+    if (!ctx.client.request) return
+    ctx.client.request.queue
       .filter((req: PermissionRequest) => {
         if (req.method === 'sign_event' && req.params?.[0]) {
           try {
@@ -150,13 +150,13 @@ export function RequestsView() {
         const policyChanges: Partial<PermissionPolicy> = {
           kinds: { [kind]: true }
         }
-        ctx.request.approve(request, policyChanges)
+        ctx.client.request.approve(request, policyChanges)
       })
   }
 
   const handleDenyAllKinds = (kind: number) => {
-    if (!ctx.request) return
-    ctx.request.queue
+    if (!ctx.client.request) return
+    ctx.client.request.queue
       .filter((req: PermissionRequest) => {
         if (req.method === 'sign_event' && req.params?.[0]) {
           try {
@@ -172,7 +172,7 @@ export function RequestsView() {
         const policyChanges: Partial<PermissionPolicy> = {
           kinds: { [kind]: false }
         }
-        ctx.request.deny(request, 'denied by user', policyChanges)
+        ctx.client.request.deny(request, 'denied by user', policyChanges)
       })
   }
 

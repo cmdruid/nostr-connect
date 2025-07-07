@@ -39,7 +39,7 @@ export function LogsProvider({ children }: LogsProviderProps): JSX.Element {
           const diff = newLogs.length - LOG_LIMIT
           newLogs = newLogs.slice(diff)
         }
-        
+
         return newLogs
       })
       batchRef.current = []

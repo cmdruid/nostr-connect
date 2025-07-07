@@ -1,4 +1,4 @@
-import { AgentSession, PermissionPolicy } from '@/types/index.js'
+import { PermissionPolicy, SignerSession } from '@/types/index.js'
 
 // Common NIP-46 permissions (excluding non-configurable ones)
 const COMMON_PERMISSIONS = [
@@ -10,7 +10,7 @@ const COMMON_PERMISSIONS = [
 ]
 
 interface PermissionsDropdownProps {
-  session: AgentSession
+  session: SignerSession
   editingPermissions: PermissionPolicy
   newEventKind: string
   onPermissionChange: (permissions: PermissionPolicy) => void

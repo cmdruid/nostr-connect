@@ -1,18 +1,16 @@
-import { EventEmitter } from '@/class/emitter.js'
-import { NostrSocket }  from '@/class/socket.js'
+import { EventEmitter }   from '@/class/emitter.js'
+import { RequestQueue }   from '@/class/request.js'
+import { SessionManager } from '@/class/session.js'
+import { NostrSocket }    from '@/class/socket.js'
 
 import {
-  RequestQueue,
-  SessionManager,
   SignerDeviceAPI,
-  SignerClientOptions,
-  InviteToken,
-  SignerSession,
-  PermissionRequest,
-  PermissionPolicy
-} from '@/index.js'
+  SignerClientOptions
+} from '@/types/index.js'
 
-export class SignerClient extends EventEmitter {
+export class SignerClient extends EventEmitter<{
+  '*' : any[]
+}> {
 
   private readonly _request : RequestQueue
   private readonly _session : SessionManager
@@ -29,7 +27,7 @@ export class SignerClient extends EventEmitter {
     // Set the socket.
     this._socket  = new NostrSocket(this._signer, options)
     // Set the request queue.
-    this._request = new RequestQueue(this._socket, options)
+    this._request = new RequestQueue(options)
     // Set the session manager.
     this._session = new SessionManager(this._socket, options)
     // Pipe the socket request messages to the session manager.
@@ -60,36 +58,7 @@ export class SignerClient extends EventEmitter {
     return this._socket
   }
 
-  join (invite : InviteToken) : Promise<SignerSession> {
-    return this._session.join(invite)
-  }
-
   close () {
     this._socket.close()
   }
-
-  on_approve (fn : (req : PermissionRequest) => void) {
-    this._request.on('approve', fn)
-  }
-
-  on_prompt (fn : (req : PermissionRequest) => void) {
-    this._request.on('prompt', fn)
-  }
-
-  approve (
-    request  : PermissionRequest,
-    result   : string,
-    changes? : Partial<PermissionPolicy>
-  ) {
-    this._request.approve(request, result, changes)
-  }
-
-  deny (
-    request  : PermissionRequest,
-    reason   : string,
-    changes? : Partial<PermissionPolicy>
-  ) {
-    this._request.deny(request, reason, changes)
-  }
-
 }

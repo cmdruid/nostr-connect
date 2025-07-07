@@ -1,9 +1,7 @@
-import { EventEmitter }   from '@/class/emitter.js'
-import { NostrSocket }    from '@/class/socket.js'
-import { parse_error }    from '@vbyte/micro-lib/util'
+import { EventEmitter } from '@/class/emitter.js'
 
 import {
-  check_permission_request,
+  check_perm_request,
   update_policy
 } from '@/lib/perms.js'
 
@@ -25,18 +23,14 @@ const DEFAULT_CONFIG : () => RequestQueueConfig = () => {
 export class RequestQueue extends EventEmitter<RequestEventMap> {
   private readonly _config  : RequestQueueConfig
   private readonly _queue   : Map<string, PermissionRequest> = new Map()
-  private readonly _socket  : NostrSocket
   private readonly _timers  : Map<string, NodeJS.Timeout>    = new Map()
 
   constructor (
-    socket  : NostrSocket,
     options : RequestQueueOptions = {}
   ) {
     super()
     // Set the config.
     this._config  = { ...DEFAULT_CONFIG(), ...options }
-    // Set the client.
-    this._socket  = socket
   }
 
   get config () : Record<string, any> {
@@ -51,7 +45,7 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
     // Try to handle the permission request.
     try {
       // Check the permission request.
-      const result = check_permission_request(req)
+      const result = check_perm_request(req)
       // If the policy check returns true,
       if (result === false) {
         // Deny the request.
@@ -80,7 +74,7 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
       // Deny the request.
       this.deny(req, 'client failed to handle request')
       // Emit the error event on the bus.
-      this.emit('error', req,  parse_error(err))
+      this.emit('error', err)
     }
   }
 
@@ -104,13 +98,10 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
 
   approve (
     req      : PermissionRequest,
-    result   : string,
     changes? : Partial<PermissionPolicy>
   ) {
     // Remove the request from the queue.
     this._remove(req)
-    // Send a response to the client.
-    this._socket.accept(req.id, req.session.pubkey, result)
     // If there are changes, update the policy.
     if (changes) this._update(req.session, changes)
     // Emit the approval on the bus.
@@ -119,15 +110,11 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
 
   deny (
     req      : PermissionRequest,
-    reason   : string,
+    reason?  : string,
     changes? : Partial<PermissionPolicy>
   ) {
-    // Get the pubkey from the request.
-    const pubkey = req.session.pubkey
     // Remove the request from the queue.
     this._remove(req)
-    // Send a rejection response to the client.
-    this._socket.reject(req.id, pubkey, reason)
     // If there are changes, update the policy.
     if (changes) this._update(req.session, changes)
     // Emit the denial on the bus.

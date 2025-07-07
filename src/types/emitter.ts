@@ -50,7 +50,7 @@ export interface AgentEventMap extends BaseEventMap {
 export interface RequestEventMap extends BaseEventMap {
   prompt  : [ PermissionRequest ]
   approve : [ PermissionRequest ]
-  deny    : [ PermissionRequest, string ]
+  deny    : [ PermissionRequest, string? ]
   error   : any[]
   timeout : [ PermissionRequest ]
   update  : [ SignerSession ]
