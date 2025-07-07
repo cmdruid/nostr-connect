@@ -47,7 +47,12 @@ export default function (ctx : TestContext) {
         tags       : [],
       })
 
-      client.on_prompt(async (req) => {
+      client.request.on('prompt', async (req) => {
+        t.pass('received prompt request')
+        client.request.approve(req)
+      })
+
+      client.request.on('approve', async (req) => {
         Assert.ok(req.method === 'sign_event', 'incorrect method: ' + req.method)
         t.pass('received sign_event request')
         const json_str = req.params?.at(0)
@@ -60,7 +65,7 @@ export default function (ctx : TestContext) {
         const signed = await client.signer.sign_event(template)
         t.pass('event is signed')
         const json = JSON.stringify(signed)
-        client.approve(req, json)
+        client.socket.accept(req.id, req.session.pubkey, json)
         t.pass('responded to request')
       })
 
