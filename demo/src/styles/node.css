@@ -419,21 +419,22 @@
   gap: 0.5rem;
 }
 
-/* Responsive unlock form: input grows, button stays compact */
+/* Responsive unlock form: input and button in separate rows */
 .unlock-form {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-top: 1.25rem;
-  align-items: center;
   max-width: 400px;
 }
 
 .unlock-form .nsec-input {
-  flex: 1;
+  width: 100%;
 }
 
 .unlock-form .button {
   min-width: 90px;
+  align-self: flex-start;
 }
 
 .error-text {
