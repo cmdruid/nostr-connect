@@ -9,7 +9,7 @@ import type {
   PermissionRequest,
   PermissionUpdate,
   RequestMessage,
-  SessionToken
+  AgentSession
 } from '@/types/index.js'
 
 export const DEFAULT_POLICY : () => PermissionPolicy = () => {
@@ -39,7 +39,7 @@ export function update_policy (
 
 export function create_permission_request (
   message : RequestMessage,
-  token   : SessionToken
+  token   : AgentSession
 ) : PermissionRequest {
   return {
     id         : message.id,
@@ -116,11 +116,13 @@ export function decode_permissions (str : string) : PermissionPolicy {
       // Assert that the key is sign_event.
       Assert.ok(key === 'sign_event', 'invalid permission entry: ' + entry)
       // Ensure that the value is an integer.
-      Assert.is_uint(value)
+      const kind = parseInt(value)
+      // Assert that the kind is a valid integer.
+      Assert.is_uint(kind)
       // Mark the sign_event permission as true.
       methods[key] = true
       // Mark the kind as true.
-      kinds[parseInt(value)] = true
+      kinds[kind]  = true
     } else {
       // Add the value to the current value.
       methods[entry] = true

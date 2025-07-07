@@ -9,7 +9,7 @@ import type { TestContext } from '../types.js'
  * @param ctx - Test context containing nodes and tape instance
  */
 export default function (ctx : TestContext) {
-  const { provider, member, tape } = ctx
+  const { agent, client, tape } = ctx
 
   tape.test('connect test', async t => {
     try {
@@ -30,28 +30,29 @@ export default function (ctx : TestContext) {
       //   console.log('*', event, ...args)
       // })
 
-      const invite = provider.channel.invite()
+      const invite = agent.invite()
 
       t.pass('created invite')
 
-      member.session.on('pending', () => {
+      agent.on('join', () => {
+        t.pass('received join event')
+      })
+
+      client.session.on('pending', () => {
         t.pass('received pending event')
       })
 
-      member.session.on('activated', () => {
+      client.session.on('activated', () => {
         t.pass('received activated event')
       })
 
-      member.session.connect(invite)
+      client.session.connect(invite)
 
       t.pass('initiated session connection')
 
-      const res = await provider.client.request({
-        method : 'get_public_key'
-      }, member.client.pubkey)
-
-      if (res) t.pass('get_pubkey successful')
-      else     t.fail('get_pubkey failed')
+      setTimeout(() => {
+        t.fail('session connection failed')
+      }, 5000)
 
     } catch (err) {
       t.fail(parse_error(err))

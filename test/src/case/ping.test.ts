@@ -8,12 +8,15 @@ import type { TestContext } from '../types.js'
  * 
  * @param ctx - Test context containing nodes and tape instance
  */
-export default function (ctx : TestContext) {
-  const { provider, member, tape } = ctx
+export default async function (ctx : TestContext) {
+  const { agent, client, relays, tape } = ctx
+
+  await client.socket.connect(relays)
+  await agent.socket.connect(relays)
 
   tape.test('ping test', async t => {
     try {
-      const res = await provider.client.ping(member.client.pubkey)
+      const res = await client.socket.ping(agent.pubkey)
       if (!res) {
         t.fail('ping failed')
       } else {

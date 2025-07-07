@@ -2,35 +2,30 @@ import { Buff }   from '@vbyte/buff'
 import { sha256 } from '@vbyte/micro-lib/hash'
 
 import {
-  NostrClient,
-  ChannelManager,
-  SessionManager,
-  SimpleSigner,
-  RequestManager
+  SignerAgent,
+  SignerClient,
+  SimpleSigner
 } from '@/index.js'
 
-import type { ClientOptions }            from '@/types/client.js'
-import type { TestProvider, TestMember } from '../types.js'
+import type {
+  SignerClientOptions,
+  SignerAgentOptions
+} from '@/types/index.js'
 
-export function create_provider (
+export function create_agent (
   name    : string,
-  options : ClientOptions = {}
-) : TestProvider {
+  options : SignerAgentOptions = {}
+) {
   const seckey  = sha256(Buff.str(name)).hex
   const signer  = new SimpleSigner(seckey)
-  const client  = new NostrClient(signer, options)
-  const channel = new ChannelManager(client, options)
-  return { client, channel }
+  return new SignerAgent(signer, options)
 }
 
-export function create_member (
+export function create_signer (
   name    : string,
-  options : ClientOptions = {}
-) : TestMember {
+  options : SignerClientOptions = {}
+) {
   const seckey  = sha256(Buff.str(name)).hex
   const signer  = new SimpleSigner(seckey)
-  const client  = new NostrClient(signer, options)
-  const session = new SessionManager(client, options)
-  const request = new RequestManager(client, session)
-  return { client, request, session, signer }
+  return new SignerClient(signer, options)
 }

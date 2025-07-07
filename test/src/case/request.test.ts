@@ -1,6 +1,5 @@
 import { now, parse_error } from '@vbyte/micro-lib/util'
 import { Assert, JsonUtil } from '@vbyte/micro-lib'
-import { open_channel }     from '../lib/connect.js'
 
 import {
   validate_event_template,
@@ -16,7 +15,7 @@ import type { TestContext } from '../types.js'
  * @param ctx - Test context containing nodes and tape instance
  */
 export default function (ctx : TestContext) {
-  const { provider, member, tape } = ctx
+  const { agent, client, relays, tape } = ctx
 
   tape.test('request test', async t => {
     try {
@@ -41,40 +40,6 @@ export default function (ctx : TestContext) {
       //   console.log('[ session ]', event, ...args)
       // })
 
-      await open_channel(provider, member)
-
-      t.pass('created channel')
-
-      member.request.on('request', async (req) => {
-        member.request.approve(req)
-      })
-
-      member.request.on('approved', async (req) => {
-        Assert.ok(req.method === 'sign_event', 'incorrect method: ' + req.method)
-        t.pass('received sign_event request')
-        const json_str = req.params.at(0)
-        const template = JsonUtil.parse(json_str)
-        Assert.exists(template, 'failed to parse event template: ' + json_str)
-        t.pass('parsed event template')
-        validate_event_template(template)
-        t.pass('event template is valid')
-        const signed = await member.signer.sign_event(template)
-        t.pass('event is signed')
-        const json = JSON.stringify(signed)
-        member.client.accept(req.id, req.session.pubkey, json)
-      })
-
-      provider.client.on('response', (msg) => {
-        Assert.ok(msg.type === 'accept',          'response was rejected')
-        t.pass('received response')
-        Assert.ok(typeof msg.result === 'string', 'invalid response payload')
-        const event = JsonUtil.parse(msg.result)
-        Assert.exists(event, 'failed to parse event: ' + msg.result)
-        t.pass('parsed signed event')
-        validate_signed_event(event)
-        t.pass('verified signed event')
-      })
-
       const template = JSON.stringify({
         content    : 'test',
         created_at : now(),
@@ -82,15 +47,45 @@ export default function (ctx : TestContext) {
         tags       : [],
       })
 
-      const res = await provider.client.request({
-        method : 'sign_event',
-        params : [ template ]
-      }, member.client.pubkey)
+      client.on_prompt(async (req) => {
+        Assert.ok(req.method === 'sign_event', 'incorrect method: ' + req.method)
+        t.pass('received sign_event request')
+        const json_str = req.params?.at(0)
+        Assert.exists(json_str, 'no event template provided')
+        const template = JsonUtil.parse(json_str)
+        Assert.exists(template, 'failed to parse event template: ' + json_str)
+        t.pass('parsed event template')
+        validate_event_template(template)
+        t.pass('event template is valid')
+        const signed = await client.signer.sign_event(template)
+        t.pass('event is signed')
+        const json = JSON.stringify(signed)
+        client.approve(req, json)
+        t.pass('responded to request')
+      })
 
-      if (res) t.pass('sign_event successful')
-      else     t.fail('sign_event failed')
+      const invite = await agent.invite(relays)
+      
+      const prom1 = client.connect(invite)
+      const prom2 = agent.connect(invite)
+
+      await Promise.all([ prom1, prom2 ])
+
+      t.pass('signer client connected to agent')
+
+      const res = await agent.request('sign_event', [ template ])
+
+      Assert.ok(res.type === 'accept',          'response was rejected')
+      t.pass('received response')
+      Assert.ok(typeof res.result === 'string', 'invalid response payload')
+      const event = JsonUtil.parse(res.result)
+      Assert.exists(event, 'failed to parse event: ' + res.result)
+      t.pass('parsed signed event')
+      validate_signed_event(event)
+      t.pass('verified signed event')
 
     } catch (err) {
+      console.log(err)
       t.fail(parse_error(err))
     } finally {
       t.end()

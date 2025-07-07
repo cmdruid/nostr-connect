@@ -1,7 +1,7 @@
 {
-  "name": "nip-46-demo",
+  "name": "nostr-connect-demo",
   "version": "0.0.1",
-  "description": "NIP-46 Web Demo",
+  "description": "nostr-connect Web Demo",
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build.ts",

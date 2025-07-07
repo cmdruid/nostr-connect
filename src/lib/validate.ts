@@ -1,11 +1,11 @@
-import type { ClientConfig, ClientOptions } from '@/types/index.js'
+import type { SocketConfig, SocketOptions } from '@/types/index.js'
 
 import * as Schema from '@/schema/index.js'
 
-export function verify_options (
+export function verify_socket_options (
   options : unknown
-) : asserts options is ClientOptions {
-  const schema = Schema.client.options
+) : asserts options is SocketOptions {
+  const schema = Schema.socket.options
   const parsed = schema.safeParse(options)
   if (!parsed.success) {
     console.error(parsed.error)
@@ -13,10 +13,10 @@ export function verify_options (
   }
 }
 
-export function parse_config (
+export function parse_socket_config (
   options : unknown
-) : ClientConfig {
-  const schema = Schema.client.config
+) : SocketConfig {
+  const schema = Schema.socket.config
   const parsed = schema.safeParse(options)
   if (!parsed.success) {
     console.error(parsed.error)

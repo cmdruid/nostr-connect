@@ -3,8 +3,7 @@ import { sha256 } from '@vbyte/micro-lib/hash'
 
 import {
   ConnectToken,
-  NostrClient,
-  ChannelManager,
+  SignerClient,
   SimpleSigner
 } from '@/index.js'
 

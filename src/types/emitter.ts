@@ -1,8 +1,8 @@
-import type { ChannelMember }     from './channel.js'
-import type { PublishReceipt }    from './client.js'
+import type { DeviceSession }     from './agent.js'
 import type { SignedEvent }       from './event.js'
-import type { PermissionRequest } from './perm.js'
-import type { SessionToken      } from './session.js'
+import type { PermissionRequest } from './request.js'
+import type { AgentSession }      from './session.js'
+import type { PublishReceipt }    from './socket.js'
 
 import type {
   AcceptTemplate,
@@ -11,6 +11,7 @@ import type {
   ResponseMessage,
   SignedMessage
 } from './message.js'
+import { InviteToken } from './invite.js'
 
 export interface BaseEventMap extends Record<string, any[]> {
   '*'   : any[]
@@ -20,7 +21,7 @@ export interface BaseEventMap extends Record<string, any[]> {
   debug : any[]
 }
 
-export interface ClientEventMap extends BaseEventMap {
+export interface SocketEventMap extends BaseEventMap {
   bounced      : [ event: SignedEvent, error: string ]
   closed       : []
   disconnected : []
@@ -39,29 +40,29 @@ export interface ClientEventMap extends BaseEventMap {
   sent         : [ receipt : PublishReceipt ]
 }
 
-
-export interface ChannelEventMap extends BaseEventMap {
-  join    : [ ChannelMember ]
-  leave   : [ ChannelMember ]
-  invite  : [ string ]
-  cancel  : [ string ]
-  cleared : [ void ]
-  expired : [ string ]
+export interface AgentEventMap extends BaseEventMap {
+  invite  : [ InviteToken ]
+  join    : [ DeviceSession ]
+  close   : [ void ]
+  ready   : [ void ]
 }
 
 export interface RequestEventMap extends BaseEventMap {
-  request : [ PermissionRequest ]
+  prompt  : [ PermissionRequest ]
   approve : [ PermissionRequest ]
   deny    : [ PermissionRequest, string ]
-  error   : [ PermissionRequest, string ]
+  error   : any[]
+  timeout : [ PermissionRequest ]
+  update  : [ AgentSession ]
 }
 
 export interface SessionEventMap extends BaseEventMap {
   message   : [ RequestMessage ]
-  activated : [ SessionToken ]
+  activated : [ AgentSession ]
   cleared   : [ void ]
-  expired   : [ SessionToken ]
+  expired   : [ AgentSession ]
+  request   : [ PermissionRequest ]
   revoked   : [ string ]
-  pending   : [ SessionToken ]
-  updated   : [ Partial<SessionToken> ]
+  pending   : [ AgentSession ]
+  updated   : [ Partial<AgentSession> ]
 }

@@ -1,5 +1,5 @@
-import { Header } from './header.js'
-import { Tabs }   from './tabs.js'
+import { Header } from './layout/header.js'
+import { Tabs }   from './layout/tabs.js'
 
 export function App () {
   return (

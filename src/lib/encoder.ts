@@ -6,9 +6,9 @@ import {
   encode_permissions
 } from '@/lib/perms.js'
 
-import type { InviteToken, ChannelProfile } from '@/types/index.js'
+import type { InviteToken, AgentProfile } from '@/types/index.js'
 
-export namespace ConnectToken {
+export namespace InviteEncoder {
   export const encode = encode_connect_url
   export const decode = decode_connect_url
 }
@@ -67,7 +67,7 @@ export function decode_connect_url (str : string) : InviteToken {
   // Assert that the secret is provided.
   Assert.exists(secret, 'no secret provided')
   // Get the profile.
-  const profile : ChannelProfile = {}
+  const profile : AgentProfile = {}
   // Get the name.
   profile.name = params.get('name')   || undefined
   // Get the client host url.

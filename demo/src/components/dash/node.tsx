@@ -1,6 +1,7 @@
 import { useState }     from 'react'
 import { nip19 }        from 'nostr-tools'
 import { useClientCtx } from '@/demo/context/client.js'
+
 import '@/styles/node.css'
 
 function truncateNpub(npub: string) {
@@ -15,9 +16,10 @@ function truncateHex(hex: string) {
 
 export function NodeInfo () {
   const ctx = useClientCtx()
-  const [ password, setPassword ] = useState('')
-  const [ error, setError ]       = useState<string | null>(null)
-  const [ showHex, setShowHex ]   = useState(false)
+
+  const [ password, setPassword ]       = useState('')
+  const [ error, setError ]             = useState<string | null>(null)
+  const [ showHex, setShowHex ]         = useState(false)
   const [ copySuccess, setCopySuccess ] = useState(false)
 
   const npub = ctx.client

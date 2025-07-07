@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react'
 import '@/styles/sessions.css'
 
-import { SessionToken, PermissionMap } from '@/types/index.js'
+import { AgentSession, PermissionPolicy } from '@/types/index.js'
 import { ConnectToken } from '@/index.js'
 import { useClientCtx } from '@/demo/context/client.js'
 import { PermissionsDropdown } from './permissions.js'
 
-export function Sessions() {
+export function SessionsView () {
   const ctx = useClientCtx()
 
-  const [activeSessions, setActiveSessions]   = useState<SessionToken[]>([])
-  const [pendingSessions, setPendingSessions] = useState<SessionToken[]>([])
+  const [activeSessions, setActiveSessions]   = useState<AgentSession[]>([])
+  const [pendingSessions, setPendingSessions] = useState<AgentSession[]>([])
   const [connectString, setConnectString]     = useState('')
   const [error, setError] = useState<string | null>(null)
   const [expandedPermissions, setExpandedPermissions] = useState<Set<string>>(new Set())
-  const [editingPermissions, setEditingPermissions] = useState<Record<string, PermissionMap>>({})
+  const [editingPermissions, setEditingPermissions] = useState<Record<string, PermissionPolicy>>({})
   const [newEventKind, setNewEventKind] = useState<Record<string, string>>({})
   const [copiedPubkey, setCopiedPubkey] = useState<string | null>(null)
 
@@ -53,6 +53,7 @@ export function Sessions() {
       await ctx.session?.connect(token)
       setConnectString('')
     } catch (err) {
+      console.error(err)
       setError(err instanceof Error ? err.message : 'Failed to activate session')
     }
   }
@@ -76,14 +77,14 @@ export function Sessions() {
       if (session) {
         setEditingPermissions(prev => ({
           ...prev,
-          [pubkey]: { ...(session.perms || {}) }
+          [pubkey]: { ...(session.policy || {}) }
         }))
       }
     }
     setExpandedPermissions(newExpanded)
   }
 
-  const handlePermissionChange = (pubkey: string, permissions: PermissionMap) => {
+  const handlePermissionChange = (pubkey: string, permissions: PermissionPolicy) => {
     setEditingPermissions(prev => ({
       ...prev,
       [pubkey]: permissions
@@ -101,10 +102,10 @@ export function Sessions() {
 
       const updatedSession = {
         ...session,
-        perms: editingPermissions[pubkey] || {}
+        policy: editingPermissions[pubkey] || {}
       }
 
-      await ctx.session?.update(updatedSession)
+      ctx.session?.update(updatedSession)
       
       // Close the dropdown after successful update
       const newExpanded = new Set(expandedPermissions)
@@ -157,23 +158,23 @@ export function Sessions() {
                   <div className="session-header">
                     <div className="session-info">
                       <div className="session-name-container">
-                        {session.image && (
+                        {session.profile.image && (
                           <img 
-                            src={session.image} 
-                            alt={`${session.name || 'Unknown'} icon`}
+                            src={session.profile.image} 
+                            alt={`${session.profile.name || 'Unknown'} icon`}
                             className="session-icon"
                           />
                         )}
-                        <span className="session-name">{session.name ?? 'unknown'}</span>
+                        <span className="session-name">{session.profile.name ?? 'unknown'}</span>
                       </div>
-                      {session.url && (
+                      {session.profile.url && (
                         <a 
-                          href={session.url} 
+                          href={session.profile.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="session-url"
                         >
-                          {new URL(session.url).hostname}
+                          {new URL(session.profile.url).hostname}
                         </a>
                       )}
                       <div className="session-pubkey-container">
@@ -202,7 +203,7 @@ export function Sessions() {
                   {expandedPermissions.has(session.pubkey) && (
                     <PermissionsDropdown
                       session={session}
-                      editingPermissions={editingPermissions[session.pubkey] || session.perms || {}}
+                      editingPermissions={editingPermissions[session.pubkey] || session.policy || {}}
                       newEventKind={newEventKind[session.pubkey] || ''}
                       onPermissionChange={(permissions) => handlePermissionChange(session.pubkey, permissions)}
                       onEventKindChange={(eventKind) => handleEventKindChange(session.pubkey, eventKind)}

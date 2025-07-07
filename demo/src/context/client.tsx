@@ -9,7 +9,7 @@ import type { ReactNode } from 'react'
 
 import type {
   NostrClientAPI,
-  NodeStatus
+  ClientStatus
 } from '@/demo/types/index.js'
 
 interface ProviderProps {

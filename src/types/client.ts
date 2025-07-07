@@ -1,19 +1,5 @@
-import type { SignedEvent } from './event.js'
+import type { RequestQueueOptions }   from './request.js'
+import type { SessionManagerOptions } from './session.js'
+import type { SocketOptions }         from './socket.js'
 
-export interface PublishResponse {
-  acks  : number
-  fails : number
-  ok    : boolean
-}
-
-export interface PublishReceipt extends PublishResponse {
-  event : SignedEvent
-}
-
-export interface ClientConfig {
-  timeout : number
-}
-
-export interface ClientOptions extends Partial<ClientConfig> {
-  relays? : string[]
-}
+export type SignerClientOptions = SocketOptions & SessionManagerOptions & RequestQueueOptions

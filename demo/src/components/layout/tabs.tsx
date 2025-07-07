@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Console }  from '@/demo/components/dash/console.js'
 import { NodeInfo } from '@/demo/components/dash/node.js'
-import { Sessions } from '@/demo/components/sessions/sessions.js'
+import { SessionsView } from '@/demo/components/sessions/sessions.js'
 import { Settings } from '@/demo/components/settings/index.js'
 
 import type { ReactElement } from 'react'
 
 import * as Icons from '@/demo/components/util/icons.js'
+import { RequestsView } from '../requests'
 
 export function Tabs(): ReactElement {
   const [ activeTab, setActiveTab ] = useState('dashboard')
@@ -22,6 +23,14 @@ export function Tabs(): ReactElement {
           >
             <Icons.ConsoleIcon />
             <span>Dashboard</span>
+          </button>
+
+          <button 
+            className={`tab-button ${activeTab === 'requests' ? 'active' : ''}`}
+            onClick={() => setActiveTab('requests')}
+          >
+            <Icons.NodeIcon />
+            <span>Requests</span>
           </button>
 
           <button 
@@ -50,9 +59,15 @@ export function Tabs(): ReactElement {
           </div>
         )}
 
+        {activeTab === 'requests' && (
+          <div className="tab-panel">
+            <RequestsView />
+          </div>
+        )}
+
         {activeTab === 'sessions' && (
           <div className="tab-panel">
-            <Sessions />
+            <SessionsView />
           </div>
         )}
 

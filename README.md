@@ -1,13 +1,15 @@
-# nostr-nip46
+# nostr-connect
 
-Reference NIP-46 signing client and session manager.
+Reference implementation of the nostr-connect standard (WIP).
 
 ## Features
 
 * Nostr client for handling the JSON-RPC messages.
-* Session manager for creating and registering sessions.
+* Channel manager for handling connections with signers.
+* Session manager for managing signing sessions.
+* Request manager for handling authenticated requests.
 * Provides API for custom integration of signing methods.
-* Supports `bunker://` and `nostrconnect://` URI schemes.
+* Supports `nostrconnect://` URI scheme.
 
 ## Overview
 
@@ -16,7 +18,7 @@ More documentation coming soon!
 ## Installation
 
 ```bash
-npm install @cmdcode/nostr-nip46
+npm install @cmdcode/nostr-connect
 ```
 
 ## How to Use

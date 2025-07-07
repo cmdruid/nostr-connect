@@ -1,4 +1,4 @@
-import { SessionToken, PermissionMap } from '@/types/index.js'
+import { AgentSession, PermissionPolicy } from '@/types/index.js'
 
 // Common NIP-46 permissions (excluding non-configurable ones)
 const COMMON_PERMISSIONS = [
@@ -10,10 +10,10 @@ const COMMON_PERMISSIONS = [
 ]
 
 interface PermissionsDropdownProps {
-  session: SessionToken
-  editingPermissions: PermissionMap
+  session: AgentSession
+  editingPermissions: PermissionPolicy
   newEventKind: string
-  onPermissionChange: (permissions: PermissionMap) => void
+  onPermissionChange: (permissions: PermissionPolicy) => void
   onEventKindChange: (eventKind: string) => void
   onUpdateSession: () => void
 }
@@ -30,7 +30,10 @@ export function PermissionsDropdown({
   const updatePermission = (permission: string, enabled: boolean) => {
     onPermissionChange({
       ...editingPermissions,
-      [permission]: enabled
+      methods: {
+        ...editingPermissions.methods,
+        [permission]: enabled
+      }
     })
   }
 
@@ -38,27 +41,25 @@ export function PermissionsDropdown({
     const kind = parseInt(newEventKind || '0')
     if (isNaN(kind)) return
 
-    const currentSignEvent = editingPermissions.sign_event
-    const eventKinds = Array.isArray(currentSignEvent) ? currentSignEvent : []
-    
-    if (!eventKinds.includes(kind)) {
-      onPermissionChange({
-        ...editingPermissions,
-        sign_event: [...eventKinds, kind].sort((a, b) => a - b)
-      })
-    }
+    onPermissionChange({
+      ...editingPermissions,
+      kinds: {
+        ...editingPermissions.kinds,
+        [kind]: true
+      }
+    })
 
     // Clear the input
     onEventKindChange('')
   }
 
   const removeEventKind = (kind: number) => {
-    const currentSignEvent = editingPermissions.sign_event
-    const eventKinds = Array.isArray(currentSignEvent) ? currentSignEvent : []
+    const updatedKinds = { ...editingPermissions.kinds }
+    delete updatedKinds[kind]
     
     onPermissionChange({
       ...editingPermissions,
-      sign_event: eventKinds.filter(k => k !== kind)
+      kinds: updatedKinds
     })
   }
 
@@ -68,7 +69,10 @@ export function PermissionsDropdown({
       <div className="permissions-list">
         {COMMON_PERMISSIONS.map(permission => {
           if (permission === 'sign_event') {
-            const eventKinds = Array.isArray(editingPermissions[permission]) ? editingPermissions[permission] as number[] : []
+            const eventKinds = Object.keys(editingPermissions.kinds || {})
+              .map(kind => parseInt(kind))
+              .filter(kind => editingPermissions.kinds[kind])
+              .sort((a, b) => a - b)
             
             return (
               <div key={permission} className="permission-item sign-event-permission">
@@ -107,7 +111,7 @@ export function PermissionsDropdown({
               </div>
             )
           } else {
-            const isEnabled = editingPermissions[permission] === true
+            const isEnabled = editingPermissions.methods?.[permission] === true
             
             return (
               <div key={permission} className="permission-item">

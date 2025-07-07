@@ -1,18 +1,24 @@
-import type { NostrClient, SessionManager } from '@/source'
+import type { NostrSocket, RequestQueue, SessionManager, SimpleSigner } from '@/source'
 
-export type LogType    = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
-export type NodeStatus = 'online' | 'offline' | 'locked' | 'connecting'
+export type LogType      = 'info' | 'error' | 'warning' | 'success' | 'sign' | 'req' | 'res' | 'ready'
+export type ClientStatus = 'online' | 'offline' | 'locked' | 'connecting' | 'loading'
 
-export interface NostrClientAPI {
-  client  : NostrClient | null
-  session : SessionManager | null
+export interface ClientState {
+  request : RequestQueue
+  session : SessionManager
+  signer  : SimpleSigner
+  socket  : NostrSocket
+}
+
+export interface ClientController extends ClientState {
+  status  : ClientStatus
   lock    : () => void
   unlock  : (password : string) => void
   reset   : () => void
-  status  : NodeStatus
 }
 
 export interface LogEntry {
+  source    : string
   timestamp : number
   message   : string
   type      : string

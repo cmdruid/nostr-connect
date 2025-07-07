@@ -1,12 +1,12 @@
 import { z }       from 'zod'
 import * as base   from '@vbyte/micro-lib/schema'
-import { profile } from './channel.js'
+import { profile } from './agent.js'
 import { policy }  from './perm.js'
 
 import type {
   SessionManagerConfig,
   SessionManagerOptions,
-  SessionToken
+  AgentSession
 } from '@/types/index.js'
 
 export const token = base.zod.object({
@@ -15,10 +15,10 @@ export const token = base.zod.object({
   profile    : profile,
   pubkey     : base.hex32,
   relays     : base.str.array(),
-}) satisfies z.ZodType<SessionToken>
+}) satisfies z.ZodType<AgentSession>
 
 export const config = base.zod.object({
-  timeout : base.num,
+  negotiate_timeout : base.num,
 }) satisfies z.ZodType<SessionManagerConfig>
 
 export const options = config.extend({

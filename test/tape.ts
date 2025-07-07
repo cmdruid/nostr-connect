@@ -4,8 +4,8 @@ import { sleep }         from '@vbyte/micro-lib/util'
 import { NostrRelay }    from './script/relay.js'
 
 import {
-  create_provider,
-  create_member
+  create_agent,
+  create_signer
 } from './src/lib/client.js'
 
 import type { TestContext } from './src/types.js'
@@ -16,18 +16,16 @@ import request_test from './src/case/request.test.js'
 
 tape('nostr-connect test suite', async t => {
 
-  const provider = create_provider('alice')
-  const member   = create_member('carol')
-  const relays   = [ 'ws://localhost:8080' ]
-  const server   = new NostrRelay(8080)
+  const agent  = create_agent('alice')
+  const client = create_signer('carol')
+  const relays = [ 'ws://localhost:8080' ]
+  const server = new NostrRelay(8080)
   
-  const ctx : TestContext = { provider, member, relays, tape: t }
+  const ctx : TestContext = { agent, client, relays, tape: t }
 
-  t.test('starting relay and nodes', async t => {
+  t.test('starting test relay', async t => {
     await server.start()
-    await provider.client.connect(relays)
-    await member.client.connect(relays)
-    t.pass('relay and nodes started')
+    t.pass('relay started')
   })
 
   await sleep(500)
@@ -36,8 +34,8 @@ tape('nostr-connect test suite', async t => {
 
   t.test('stopping relay and nodes', async t => {
     await sleep(1000) 
-    await provider.client.close()
-    await member.client.close()
+    agent.close()
+    client.close()
     server.close()
     t.pass('relay and nodes stopped')
     process.exit(0)
