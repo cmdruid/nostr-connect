@@ -55,11 +55,11 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.4",
-    "@types/node": "^24.0.7",
+    "@types/node": "^24.0.10",
     "@types/tape": "^5.8.1",
     "@types/ws": "^8.18.1",
     "faucet": "^0.0.4",
-    "rollup": "^4.44.1",
+    "rollup": "^4.44.2",
     "tape": "^5.9.0",
     "tslib": "^2.8.1",
     "tsx": "^4.20.3",
@@ -68,8 +68,8 @@
   },
   "dependencies": {
     "@vbyte/buff": "^1.0.2",
-    "@vbyte/micro-lib": "^1.0.11",
+    "@vbyte/micro-lib": "^1.0.14",
     "nostr-tools": "^2.15.0",
-    "zod": "^3.25.67"
+    "zod": "^3.25.75"
   }
 }
