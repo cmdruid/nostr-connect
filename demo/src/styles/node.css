@@ -399,14 +399,19 @@
 }
 
 .copy-button {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem !important;
   font-size: 0.875rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 1.5rem !important;
   height: 1.5rem;
-  margin-top: 0.125rem;
+  margin: 0;
   transition: opacity 0.2s ease-in-out;
+  border-radius: 0.25rem;
+  min-width: unset !important;
+  align-self: center;
+  transform: translateY(-1px);
 }
 
 .copy-button.copied {
@@ -425,16 +430,19 @@
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 1.25rem;
+  width: 100%;
   max-width: 400px;
 }
 
 .unlock-form .nsec-input {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .unlock-form .button {
+  width: 100%;
   min-width: 90px;
-  align-self: flex-start;
+  box-sizing: border-box;
 }
 
 .error-text {
@@ -443,7 +451,10 @@
 
 .button.reset-node {
   margin-top: 1.5rem;
+  width: 100%;
+  max-width: 400px;
   min-width: 120px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 500px) {

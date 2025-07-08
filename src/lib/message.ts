@@ -18,7 +18,7 @@ import * as Schema from '@/schema/index.js'
  * @param config  Message configuration
  * @returns       Message template
  */
-export function create_request_template (
+export function create_request_msg (
   config : Partial<RequestTemplate>
 ) : RequestTemplate {
   // Parse the message template.
@@ -38,15 +38,13 @@ export function create_request_template (
  * @param config  Message configuration
  * @returns       Message template
  */
-export function create_accept_template (
+export function create_accept_msg (
   config : Partial<AcceptTemplate>
 ) : AcceptTemplate {
   // Parse the message template.
   const schema = Schema.message.accept_template.safeParse(config)
   // If the message template is invalid, throw an error.
   if (!schema.success) {
-    console.error(schema.error)
-    console.error(config)
     throw new Error('invalid request message')
   }
   // Return the message template.
@@ -58,15 +56,13 @@ export function create_accept_template (
  * @param config  Message configuration
  * @returns       Message template
  */
-export function create_reject_template (
+export function create_reject_msg (
   config : Partial<RejectTemplate>
 ) : RejectTemplate {
   // Parse the message template.
   const schema = Schema.message.reject_template.safeParse(config)
   // If the message template is invalid, throw an error.
   if (!schema.success) {
-    console.error(schema.error)
-    console.error(config)
     throw new Error('invalid request message')
   }
   // Return the message template.
@@ -92,8 +88,6 @@ export function parse_message (
   const parsed = schema.safeParse(json)
   // If the event schema is invalid, throw an error.
   if (!parsed.success) {
-    console.error(parsed.error)
-    console.error(json)
     throw new Error('invalid message payload')
   }
   // Get the message type.

@@ -38,10 +38,6 @@
   font-size: 1.1rem;
 }
 
-.requests-error {
-  color: #ff6b6b;
-}
-
 /* Request Cards */
 .request-card {
   display: flex;
@@ -363,11 +359,12 @@
 }
 
 .requests-error {
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px solid #e74c3c;
+  background: rgba(126, 203, 255, 0.1);
+  border: 1px solid #7ecbff;
   border-radius: 8px;
   padding: 2rem;
   text-align: center;
+  color: #7ecbff;
 }
 
 .requests-empty {

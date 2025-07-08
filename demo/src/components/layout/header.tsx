@@ -7,9 +7,9 @@ export function Header () {
         className="nip46-logo"
       /> */}
       <div className="title-container">
-        <h1>NIP-46 Web Demo</h1>
+        <h1>Nostr Connect</h1>
       </div>
-      <p>NIP-46 Web Demo</p>
+      <p>Web Demo</p>
       {/* <a 
         href="" 
         target="_blank" 

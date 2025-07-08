@@ -71,6 +71,12 @@ export function RequestsView() {
   // Update requests when they change
   useEffect(() => {
     const updateRequests = () => {
+      // Add null check for ctx.client and ctx.client.request
+      if (!ctx.client || !ctx.client.request) {
+        setPendingRequests([])
+        return
+      }
+      
       const rawRequests = ctx.client.request.queue || []
       setPendingRequests(rawRequests.map(transformRequest))
     }
@@ -78,19 +84,22 @@ export function RequestsView() {
     // Initial update
     updateRequests()
 
-    // Listen for request changes
-    if (ctx.client.request) {
+    // Listen for request changes only if client and request exist
+    if (ctx.client && ctx.client.request) {
       ctx.client.request.on('prompt',  updateRequests)
       ctx.client.request.on('approve', updateRequests)
       ctx.client.request.on('deny',    updateRequests)
 
       return () => {
-        ctx.client.request.off('prompt',  updateRequests)
-        ctx.client.request.off('approve', updateRequests)
-        ctx.client.request.off('deny',    updateRequests)
+        // Add null check in cleanup too
+        if (ctx.client && ctx.client.request) {
+          ctx.client.request.off('prompt',  updateRequests)
+          ctx.client.request.off('approve', updateRequests)
+          ctx.client.request.off('deny',    updateRequests)
+        }
       }
     }
-  }, [ctx.client.request])
+  }, [ctx.client])
 
   const toggleExpanded = (requestId: string) => {
     const newExpanded = new Set(expanded)
@@ -103,7 +112,7 @@ export function RequestsView() {
   }
 
   const handleApprove = (requestId: string) => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
     if (request) {
       ctx.client.request.approve(request)
@@ -111,7 +120,7 @@ export function RequestsView() {
   }
 
   const handleDeny = (requestId: string) => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
     if (request) {
       ctx.client.request.deny(request, 'denied by user')
@@ -119,21 +128,21 @@ export function RequestsView() {
   }
 
   const handleApproveAll = () => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     ctx.client.request.queue.forEach((request: PermissionRequest) => {
       ctx.client.request.approve(request)
     })
   }
 
   const handleDenyAll = () => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     ctx.client.request.queue.forEach((request: PermissionRequest) => {
       ctx.client.request.deny(request, 'denied by user')
     })
   }
 
   const handleApproveAllKinds = (kind: number) => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     ctx.client.request.queue
       .filter((req: PermissionRequest) => {
         if (req.method === 'sign_event' && req.params?.[0]) {
@@ -155,7 +164,7 @@ export function RequestsView() {
   }
 
   const handleDenyAllKinds = (kind: number) => {
-    if (!ctx.client.request) return
+    if (!ctx.client || !ctx.client.request) return
     ctx.client.request.queue
       .filter((req: PermissionRequest) => {
         if (req.method === 'sign_event' && req.params?.[0]) {
@@ -181,7 +190,17 @@ export function RequestsView() {
     return (
       <div className="requests-container">
         <h2 className="section-header">Permission Requests</h2>
-        <p className="requests-error">Client is locked. Please unlock to view requests.</p>
+        <p className="requests-error">🔒 Please unlock your client to view permission requests</p>
+      </div>
+    )
+  }
+
+  // Show loading state if client is null but not locked
+  if (!ctx.client) {
+    return (
+      <div className="requests-container">
+        <h2 className="section-header">Permission Requests</h2>
+        <p className="requests-empty">Loading...</p>
       </div>
     )
   }

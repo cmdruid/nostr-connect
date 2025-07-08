@@ -21,6 +21,13 @@ export function SessionsView () {
   // Update sessions when they change
   useEffect(() => {
     const updateSessions = () => {
+      // Add null check for ctx.client and ctx.client.session
+      if (!ctx.client || !ctx.client.session) {
+        setActiveSessions([])
+        setPendingSessions([])
+        return
+      }
+      
       setActiveSessions(ctx.client.session.active   || [])
       setPendingSessions(ctx.client.session.pending || [])
     }
@@ -28,25 +35,33 @@ export function SessionsView () {
     // Initial update
     updateSessions()
 
-    // Listen for session changes
-    ctx.client.session.on('activated', updateSessions)
-    ctx.client.session.on('pending',   updateSessions)
-    ctx.client.session.on('updated',   updateSessions)
-    ctx.client.session.on('revoked',   updateSessions)
+    // Listen for session changes only if client and session exist
+    if (ctx.client && ctx.client.session) {
+      ctx.client.session.on('activated', updateSessions)
+      ctx.client.session.on('pending',   updateSessions)
+      ctx.client.session.on('updated',   updateSessions)
+      ctx.client.session.on('revoked',   updateSessions)
 
-    return () => {
-      ctx.client.session.off('activated', updateSessions)
-      ctx.client.session.off('pending',   updateSessions)
-      ctx.client.session.off('updated',   updateSessions)
-      ctx.client.session.off('revoked',   updateSessions)
+      return () => {
+        // Add null check in cleanup too
+        if (ctx.client && ctx.client.session) {
+          ctx.client.session.off('activated', updateSessions)
+          ctx.client.session.off('pending',   updateSessions)
+          ctx.client.session.off('updated',   updateSessions)
+          ctx.client.session.off('revoked',   updateSessions)
+        }
+      }
     }
-  }, [ ctx.client.session ])
+  }, [ctx.client])
 
   const handleRevokeSession = (pubkey: string) => {
+    if (!ctx.client || !ctx.client.session) return
     ctx.client.session.revoke(pubkey)
   }
 
   const handleActivateSession = async () => {
+    if (!ctx.client || !ctx.client.session) return
+    
     try {
       setError(null)
       const token = InviteEncoder.decode(connectString)
@@ -96,6 +111,8 @@ export function SessionsView () {
   }
 
   const handleUpdateSession = async (pubkey: string) => {
+    if (!ctx.client || !ctx.client.session) return
+    
     try {
       const session = [...activeSessions, ...pendingSessions].find(s => s.pubkey === pubkey)
       if (!session) return
@@ -130,6 +147,26 @@ export function SessionsView () {
     navigator.clipboard.writeText(text)
     setCopiedPubkey(text)
     setTimeout(() => setCopiedPubkey(null), 2000) // Reset after 2 seconds
+  }
+
+  // Show locked state if client is locked
+  if (ctx.status === 'locked') {
+    return (
+      <div className="sessions-container">
+        <h2 className="section-header">Client Sessions</h2>
+        <p className="session-error">🔒 Please unlock your client to view and manage sessions</p>
+      </div>
+    )
+  }
+
+  // Show loading state if client is null but not locked
+  if (!ctx.client) {
+    return (
+      <div className="sessions-container">
+        <h2 className="section-header">Client Sessions</h2>
+        <p className="session-empty">Loading...</p>
+      </div>
+    )
   }
 
   // Combine active and pending sessions

@@ -1,4 +1,3 @@
-import type { AgentSession }     from './agent.js'
 import type { SignedEvent }       from './event.js'
 import type { PermissionRequest } from './request.js'
 import type { SignerSession }      from './session.js'
@@ -11,7 +10,7 @@ import type {
   ResponseMessage,
   SignedMessage
 } from './message.js'
-import { InviteToken } from './invite.js'
+import { InviteToken, JoinEvent } from './invite.js'
 
 export interface BaseEventMap extends Record<string, any[]> {
   '*'   : any[]
@@ -19,6 +18,11 @@ export interface BaseEventMap extends Record<string, any[]> {
   error : any[]
   warn  : any[]
   debug : any[]
+}
+
+export interface ClientEventMap extends BaseEventMap {
+  close : [ void ]
+  ready : [ void ]
 }
 
 export interface SocketEventMap extends BaseEventMap {
@@ -40,29 +44,31 @@ export interface SocketEventMap extends BaseEventMap {
   sent         : [ receipt : PublishReceipt ]
 }
 
-export interface AgentEventMap extends BaseEventMap {
+export interface InviteEventMap extends BaseEventMap {
   invite  : [ InviteToken ]
-  join    : [ AgentSession ]
-  close   : [ void ]
-  ready   : [ void ]
+  cancel  : [ string ]
+  join    : [ JoinEvent ]
+  expired : [ string ]
+  revoke  : [ void   ]
 }
 
 export interface RequestEventMap extends BaseEventMap {
   prompt  : [ PermissionRequest ]
   approve : [ PermissionRequest ]
-  deny    : [ PermissionRequest, string? ]
-  error   : any[]
+  deny    : [ PermissionRequest, string ]
+  resolve : [ PermissionRequest, string ]
+  reject  : [ PermissionRequest, string ]
   timeout : [ PermissionRequest ]
   update  : [ SignerSession ]
 }
 
 export interface SessionEventMap extends BaseEventMap {
-  message   : [ RequestMessage ]
-  activated : [ SignerSession ]
+  pending   : [ SignerSession ]
+  active    : [ SignerSession ]
   cleared   : [ void ]
   expired   : [ SignerSession ]
-  request   : [ PermissionRequest ]
   revoked   : [ string ]
-  pending   : [ SignerSession ]
   updated   : [ Partial<SignerSession> ]
+  message   : [ RequestMessage ]
+  request   : [ PermissionRequest ]
 }

@@ -8,10 +8,10 @@ import { DEFAULT_POLICY } from '@/const.js'
 import type {
   SignerAgentConfig,
   SignerAgentOptions,
-  AgentEventMap,
   AgentSession,
   SignerDeviceAPI,
-  SocketOptions
+  SocketOptions,
+  ClientEventMap
 } from '@/types/index.js'
 
 const DEFAULT_CONFIG : () => SignerAgentConfig = () => {
@@ -22,7 +22,7 @@ const DEFAULT_CONFIG : () => SignerAgentConfig = () => {
   }
 }
 
-export class SignerAgent extends EventEmitter<AgentEventMap> {
+export class SignerAgent extends EventEmitter<ClientEventMap> {
 
   private readonly _config : SignerAgentConfig
   private readonly _invite : InviteManager
@@ -49,7 +49,7 @@ export class SignerAgent extends EventEmitter<AgentEventMap> {
     // Handle the invite messages.
     this._invite.on('join', (event) => {
       this._session = { ...event, created_at : now() }
-      this.emit('join', this._session)
+      this.emit('ready')
     })
   }
 
@@ -69,7 +69,8 @@ export class SignerAgent extends EventEmitter<AgentEventMap> {
     return this._session !== null
   }
 
-  get session () : AgentSession | null {
+  get session () : AgentSession {
+    Assert.exists(this._session, 'device not connected to agent')
     return this._session
   }
 
@@ -77,15 +78,24 @@ export class SignerAgent extends EventEmitter<AgentEventMap> {
     return this._socket
   }
 
+  async connect (relays? : string[]) {
+    // Connect to the relays.
+    await this._socket.connect(relays)
+    // Emit the ready event.
+    this.emit('ready')
+  }
+
   close () {
+    // Set the session to null.
     this._session = null
+    // Close the socket.
     this._socket.close()
+    // Emit the closed event.
     this.emit('close')
   }
 
   request (method : string, params? : string[]) {
-    Assert.exists(this._session, 'device not connected to agent')
-    return this._socket.request({ method, params }, this._session.pubkey)
+    return this._socket.request({ method, params }, this.session.pubkey)
   }
 }
 

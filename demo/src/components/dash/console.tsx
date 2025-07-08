@@ -53,17 +53,17 @@ export function Console () {
             <div key={idx} className={`console-entry ${log.payload ? 'expandable' : ''}`}>
               <div className="entry-header" onClick={() => log.payload && toggleExpand(idx)}>
                 <div className="entry-prefix">
-                  {log.payload && (
-                    <span className={`chevron ${expandedIndices[idx] ? 'expanded' : ''}`}>
-                      {expandedIndices[idx] ? '▼' : '▶'}
-                    </span>
-                  )}
                   <span className="console-timestamp">
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </span>
                   {log.type && <span className={`console-badge console-type-${log.type.toLowerCase()}`}>{log.type}</span>}
                 </div>
                 <span className={`console-message`}>{log.message}</span>
+                {log.payload && (
+                  <span className={`chevron ${expandedIndices[idx] ? 'expanded' : ''}`}>
+                    {expandedIndices[idx] ? '▼' : '◀'}
+                  </span>
+                )}
               </div>
               {log.payload && expandedIndices[idx] && (
                 <div className="console-payload">

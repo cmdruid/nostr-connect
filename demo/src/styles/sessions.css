@@ -456,14 +456,6 @@
   box-shadow: 0 4px 16px 0 rgba(52,152,219,0.18);
 }
 
-/* Error Message */
-.session-error {
-  margin-top: 0.7em;
-  color: #ff6b6b;
-  font-weight: 500;
-  font-size: 0.98rem;
-}
-
 .session-info {
   display: flex;
   flex-direction: column;
@@ -506,12 +498,8 @@
 
 @media (max-width: 700px) {
   .sessions-container {
-    max-width: 100%;
-    width: 100vw;
-    padding: 1rem 0.5rem;
-    border-radius: 0;
-    margin: 0;
-    box-sizing: border-box;
+    padding: 1.5rem;
+    margin: 1rem 0;
   }
   .session-header {
     flex-direction: column;
@@ -534,4 +522,41 @@
   .session-card-actions-bottom {
     margin-top: 0.5rem;
   }
+}
+
+/* Error and Empty States */
+.session-loading,
+.session-error,
+.session-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #b0b8c9;
+  font-size: 1.1rem;
+}
+
+/* Loading and error states */
+.session-loading {
+  background: #1a2233;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid #28344a;
+}
+
+.session-error {
+  background: rgba(126, 203, 255, 0.1);
+  border: 1px solid #7ecbff;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  color: #7ecbff;
+}
+
+.session-empty {
+  background: #1a2233;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid #28344a;
+  font-style: italic;
 } 

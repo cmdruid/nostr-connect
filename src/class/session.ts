@@ -13,6 +13,7 @@ import {
   SessionManagerOptions,
   SessionManagerConfig
 } from '@/types/index.js'
+import { create_accept_msg } from '@/lib/message.js'
 
 const DEFAULT_CONFIG : () => SessionManagerConfig = () => {
   return {
@@ -64,7 +65,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     return Array.from(this._pending.values())
   }
 
-  _activate (pubkey : string) : void {
+  _join (pubkey : string) : void {
     // Fetch the token from the pending session map.
     const token = this._pending.get(pubkey)
     // Assert that the token exists.
@@ -80,7 +81,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     // Add the token to the active session map.
     this._active.set(token.pubkey, token)
     // Emit the token activation to the client.
-    this.emit('activated', token)
+    this.emit('active', token)
   }
 
   _register (session : SignerSession) : void {
@@ -116,7 +117,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
       // If the token is found in the pending session map,
       if (this._pending.has(sender_pk)) {
         // Activate the token.
-        this._activate(sender_pk)
+        this._join(sender_pk)
       }
       // Fetch the token from the active session map.
       const session = this._active.get(sender_pk)
@@ -126,13 +127,13 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
       switch (msg.method) {
         case CONST.REQ_METHOD.CONNECT:
           // Send a response to the client.
-          this._socket.accept(msg.id, sender_pk, 'ack', session.relays)
+          this._socket.accept(msg, 'ack', session.relays)
           break
         case CONST.REQ_METHOD.GET_PUBKEY:
           // Get the client's public key.
           const pubkey = this._socket.pubkey
           // Send a response to the client.
-          this._socket.accept(msg.id, sender_pk, pubkey, session.relays)
+          this._socket.accept(msg, pubkey, session.relays)
           break
         default:
           const req = create_perm_request(msg, session)
@@ -158,8 +159,10 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
     const session = { ...token, created_at: now() }
     // Add the session token to the pending session map.
     this._pending.set(session.pubkey, session)
+    // Create the response message.
+    const response = create_accept_msg({ id : secret, result : secret })
     // Send a response to the issuing client.
-    this._socket.accept(secret, token.pubkey, secret, token.relays)
+    this._socket.send(response, token.pubkey, token.relays)
     // Emit the pending session token to the client.
     this.emit('pending', session)
     // Return the session token.
@@ -182,7 +185,7 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
         reject('timeout')
       }, timeout)
       // Register the listener.
-      this.within('activated', (token) => {
+      this.within('active', (token) => {
         if (token.pubkey === invite.pubkey) {
           clearTimeout(timer)
           resolve(token)

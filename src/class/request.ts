@@ -9,32 +9,26 @@ import type {
   PermissionPolicy,
   PermissionRequest,
   RequestEventMap,
-  SignerSession,
-  RequestQueueConfig,
-  RequestQueueOptions
+  SignerSession
 } from '@/types/index.js'
+import { NostrSocket } from './socket.js'
+import { create_accept_msg, create_reject_msg } from '@/lib/message.js'
 
-const DEFAULT_CONFIG : () => RequestQueueConfig = () => {
-  return {
-    queue_timeout : 30,
-  }
-}
+const DEFAULT_TIMEOUT : number = 30
 
 export class RequestQueue extends EventEmitter<RequestEventMap> {
-  private readonly _config  : RequestQueueConfig
   private readonly _queue   : Map<string, PermissionRequest> = new Map()
+  private readonly _socket  : NostrSocket
   private readonly _timers  : Map<string, NodeJS.Timeout>    = new Map()
+  private readonly _timeout : number
 
   constructor (
-    options : RequestQueueOptions = {}
+    socket  : NostrSocket,
+    timeout : number = DEFAULT_TIMEOUT
   ) {
     super()
-    // Set the config.
-    this._config  = { ...DEFAULT_CONFIG(), ...options }
-  }
-
-  get config () : Record<string, any> {
-    return this._config
+    this._socket  = socket
+    this._timeout = timeout
   }
 
   get queue () : PermissionRequest[] {
@@ -55,7 +49,7 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
         // Add the request to the queue.
         this._queue.set(req.id, req)
         // Get the timeout in milliseconds.
-        const timeout = this.config.queue_timeout * 1000
+        const timeout = this._timeout * 1000
         // Add a timer to auto-reject the request.
         const timer = setTimeout(() => { this.deny(req, 'request timed out') }, timeout)
         // Add the timer to the timers map.
@@ -110,7 +104,7 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
 
   deny (
     req      : PermissionRequest,
-    reason?  : string,
+    reason   : string,
     changes? : Partial<PermissionPolicy>
   ) {
     // Remove the request from the queue.
@@ -119,6 +113,24 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
     if (changes) this._update(req.session, changes)
     // Emit the denial on the bus.
     this.emit('deny', req, reason)
+  }
+
+  resolve (req : PermissionRequest, result : string) {
+    // Create the accept message.
+    const msg = create_accept_msg({ id : req.id, result })
+    // Accept the request.
+    this._socket.send(msg, req.session.pubkey)
+    // Emit the resolve event on the bus.
+    this.emit('resolve', req, result)
+  }
+
+  reject (req : PermissionRequest, reason : string) {
+    // Create the reject message.
+    const msg = create_reject_msg({ id : req.id, error : reason })
+    // Reject the request.
+    this._socket.send(msg, req.session.pubkey)
+    // Emit the reject event on the bus.
+    this.emit('reject', req, reason)
   }
 
 }

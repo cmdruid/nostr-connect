@@ -1,15 +1,39 @@
-import { Assert } from '@vbyte/micro-lib/assert'
+import { Buff }           from '@vbyte/buff'
+import { Assert }         from '@vbyte/micro-lib/assert'
+import { DEFAULT_POLICY } from '@/const.js'
 
 import {
   decode_permissions,
   encode_permissions
 } from '@/lib/perms.js'
 
-import type { InviteToken, AgentProfile } from '@/types/index.js'
+import type {
+  InviteToken,
+  AgentProfile,
+  InviteConfig
+} from '@/types/index.js'
+
+const DEFAULT_CONFIG : () => InviteConfig = () => {
+  return {
+    policy  : DEFAULT_POLICY(),
+    profile : {},
+    relays  : []
+  }
+}
 
 export namespace InviteEncoder {
   export const encode = encode_connect_url
   export const decode = decode_connect_url
+}
+
+export function create_token (
+  pubkey  : string,
+  options : Partial<InviteConfig> = {}
+) : InviteToken {
+  // Generate a new secret.
+  const secret = Buff.random(32).hex
+  // Create a new connection token.
+  return { ...DEFAULT_CONFIG(), ...options, pubkey, secret }
 }
 
 export function encode_connect_url (token : InviteToken) {

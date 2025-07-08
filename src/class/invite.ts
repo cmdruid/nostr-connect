@@ -1,7 +1,6 @@
-import { Buff }           from '@vbyte/buff'
-import { EventEmitter }   from '@/class/emitter.js'
-import { NostrSocket }    from '@/class/socket.js'
-import { DEFAULT_POLICY } from '@/const.js'
+import { EventEmitter } from '@/class/emitter.js'
+import { NostrSocket }  from '@/class/socket.js'
+import { create_token } from '@/lib/invite.js'
 
 import type {
   ResponseMessage,
@@ -10,14 +9,6 @@ import type {
   InviteConfig,
   JoinEvent
 } from '@/types/index.js'
-
-const DEFAULT_CONFIG : () => InviteConfig = () => {
-  return {
-    policy  : DEFAULT_POLICY(),
-    profile : {},
-    relays  : []
-  }
-}
 
 const DEFAULT_TIMEOUT = 30
 
@@ -91,12 +82,7 @@ export class InviteManager extends EventEmitter<InviteEventMap> {
 
   create (options : Partial<InviteConfig> = {}) : InviteToken {
     // Create a new connection token.
-    const token : InviteToken = {
-      ...DEFAULT_CONFIG(),
-      ...options,
-      pubkey  : this._socket.pubkey,
-      secret  : Buff.random(32).hex
-    }
+    const token = create_token(this._socket.pubkey, options)
     // Register the token with the invite manager.
     this._create(token)
     // Return the connection token with the secret.

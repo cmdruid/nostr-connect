@@ -93,15 +93,12 @@
   flex-shrink: 0;
 }
 
-/* Add padding to entries without a chevron to maintain alignment */
-.entry-prefix:not(:has(.chevron)) {
-  padding-left: 1.1rem; /* Fine-tuned for better alignment */
-}
-
 .chevron {
-  margin-right: 0.5rem;
+  margin-left: 0.5rem;
   color: #718096;
   font-size: 1rem;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .chevron.expanded {

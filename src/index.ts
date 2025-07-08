@@ -1,4 +1,4 @@
-export { InviteEncoder } from './lib/encoder.js'
+export { InviteEncoder } from './lib/invite.js'
 
 export * from './class/agent.js'
 export * from './class/client.js'

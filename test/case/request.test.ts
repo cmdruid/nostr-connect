@@ -65,7 +65,7 @@ export default function (ctx : TestContext) {
         const signed = await client.signer.sign_event(template)
         t.pass('event is signed')
         const json = JSON.stringify(signed)
-        client.socket.accept(req.id, req.session.pubkey, json)
+        client.request.resolve(req, json)
         t.pass('responded to request')
       })
 

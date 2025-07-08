@@ -97,14 +97,13 @@ export function useClient () : ClientController {
   client.socket.on('closed',  handleClosed)
   client.socket.on('error',   handleError)
 
-  client.session.on('activated', handleSessionChange)
-  client.session.on('revoked',   handleSessionChange)
-  client.session.on('updated',   handleSessionChange)
+  client.session.on('active',  handleSessionChange)
+  client.session.on('revoked', handleSessionChange)
+  client.session.on('updated', handleSessionChange)
 
   client.request.on('approve', (request)         => request_accept_handler(client, request))
   client.request.on('deny',    (request, reason) => request_deny_handler(client, request, reason))
 
-  client.on('*',         (event, data, error) => handleAllEvents('client', event, data, error))
   client.request.on('*', (event, data, error) => handleAllEvents('request', event, data, error))
   client.session.on('*', (event, data, error) => handleAllEvents('session', event, data, error))
   client.socket.on('*',  (event, data, error) => handleAllEvents('socket', event, data, error))
@@ -169,35 +168,35 @@ async function request_accept_handler (
       // Sign the event.
       const signed = await client.signer.sign_event(event)
       // Respond to the request.
-      client.socket.accept(request.id, request.session.pubkey, JSON.stringify(signed))
+      client.request.resolve(request, JSON.stringify(signed))
     }
     if (request.method === SIGN_METHOD.NIP04_DECRYPT) {
       const peer_pubkey = request?.params?.at(0)
       const ciphertext  = request?.params?.at(1)
       if (!peer_pubkey || !ciphertext) return
       const decrypted = await client.signer.nip04_decrypt(peer_pubkey, ciphertext)
-      client.socket.accept(request.id, request.session.pubkey, decrypted)
+      client.request.resolve(request, decrypted)
     }
     if (request.method === SIGN_METHOD.NIP04_ENCRYPT) {
       const peer_pubkey = request?.params?.at(0)
       const plaintext   = request?.params?.at(1)
       if (!peer_pubkey || !plaintext) return
       const encrypted = await client.signer.nip04_encrypt(peer_pubkey, plaintext)
-      client.socket.accept(request.id, request.session.pubkey, encrypted)
+      client.request.resolve(request, encrypted)
     }
     if (request.method === SIGN_METHOD.NIP44_DECRYPT) {
       const peer_pubkey = request?.params?.at(0)
       const ciphertext  = request?.params?.at(1)
       if (!peer_pubkey || !ciphertext) return
       const decrypted = await client.signer.nip44_decrypt(peer_pubkey, ciphertext)
-      client.socket.accept(request.id, request.session.pubkey, decrypted)
+      client.request.resolve(request, decrypted)
     }
     if (request.method === SIGN_METHOD.NIP44_ENCRYPT) {
       const peer_pubkey = request?.params?.at(0)
       const plaintext   = request?.params?.at(1)
       if (!peer_pubkey || !plaintext) return
       const encrypted = await client.signer.nip44_encrypt(peer_pubkey, plaintext)
-      client.socket.accept(request.id, request.session.pubkey, encrypted)
+      client.request.resolve(request, encrypted)
     }
   } catch (error) {
     console.error('Error handling request:', error)
@@ -210,7 +209,7 @@ function request_deny_handler (
   request : PermissionRequest,
   reason? : string
 ) {
-  client.socket.reject(request.id, request.session.pubkey, reason ?? 'denied by user')
+  client.request.reject(request, reason ?? 'denied by user')
 }
 
 function get_log_entry (
@@ -250,9 +249,9 @@ function get_log_entry (
   // Create a new log entry.
   return {
     source,
-    timestamp : Date.now(),
     message   : message,
-    type      : type,
-    payload   : payload
+    payload   : payload,
+    timestamp : Date.now(),
+    type      : type
   }
 }

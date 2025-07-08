@@ -19,9 +19,9 @@ import {
 } from '@/lib/event.js'
 
 import {
-  create_accept_template,
-  create_reject_template,
-  create_request_template,
+  create_accept_msg,
+  create_reject_msg,
+  create_request_msg,
   parse_message
 } from '@/lib/message.js'
 
@@ -42,7 +42,7 @@ import type {
 } from '@/types/index.js'
 
 /**
- * Default configuration settings for a Nostr Client.
+ * Default configuration settings for a nostr socket.
  */
 const DEFAULT_CONFIG : () => SocketConfig = () => {
   return {
@@ -62,7 +62,7 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
   private _ready  : boolean  = false
 
   /**
-   * Creates a new instance.
+   * Creates a new nostr socket instance.
    * @param signer   The signer device API.
    * @param options  Optional configuration parameters
    */
@@ -70,7 +70,6 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     signer  : SignerDeviceAPI,
     options : SocketOptions = {}
   ) {
-    // Create the event emitter.
     super()
     // Verify the socket options.
     verify_socket_options(options)
@@ -78,7 +77,7 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     this._signer  = signer
     // Define the socket's configuration.
     this._config  = parse_socket_config({ ...DEFAULT_CONFIG(), ...options })
-    // Initialize the connectionpool.
+    // Initialize the connection pool.
     this._pool    = new SimplePool()
     // Set the configured relays.
     this._relays  = new Set(options.relays ?? [])
@@ -109,12 +108,13 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
   private _eose () : void {
     // Emit the subscribed event.
     this.emit('subscribed')
-    // If the client is already ready, return.
-    if (this._ready) return
-    // Set the client to ready.
-    this._ready = true
-    // Emit the ready event.
-    this.emit('ready')
+    // If the client is not ready,
+    if (!this._ready) {
+      // Set the client to ready.
+      this._ready = true
+      // Emit the ready event.
+      this.emit('ready')
+    }
   }
 
   private _unsub () : void {
@@ -125,9 +125,9 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
   }
 
   private async _handler (event : SignedEvent) : Promise<void> {
-    // Ignore events from the client itself.
+    // Return early if the event is from the client itself.
     if (event.pubkey === this.pubkey) return
-    // Emit the event to the client emitter.
+    // Emit the raw event to the client emitter.
     this.emit('event', event)
     // Try to handle the event.
     try {
@@ -159,18 +159,18 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     }
   }
 
-  private async _ping (message : RequestMessage) : Promise<PublishReceipt> {
-    // Assert the message is a ping.
-    Assert.ok(message.method === 'ping', 'invalid ping message')
-    // Emit the ping event.
+  private _ping (message : RequestMessage) : void {
+    // If the message is not a ping, return early.
+    if (message.method !== 'ping') return
+    // Emit the ping event to the client emitter.
     this.emit('ping', message.env.pubkey)
     // Create the pong message template.
-    const tmpl = { result: 'pong', id: message.id }
+    const tmpl = { result : 'pong', id : message.id }
     // Send the pong message.
-    return this.send(tmpl, message.env.pubkey)
+    this.send(tmpl, message.env.pubkey)
   }
 
-  async _notarize (
+  private async _notarize (
     message   : MessageTemplate,
     recipient : string
   ) : Promise<SignedEvent> {
@@ -184,22 +184,27 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     return create_envelope(config, payload, recipient, this._signer)
   }
 
-  _subscribe () {
+  private _subscribe () {
     // Assert that there are relays to subscribe to.
     Assert.ok(this.relays.length > 0, 'no relays to subscribe to')
-    // Get the filter configuration.
+    // Configure the subscription filter.
     const filter = { kinds : [ EVENT_KIND ], since : now(), '#p' : [ this.pubkey ] }
-    // Create the subscription parameters.
+    // Configure the subscription parameters.
     const params : SubscribeManyParams = {
       id      : this._sub_id,
       onevent : this._handler.bind(this),
       oneose  : this._eose.bind(this),
       onclose : this._unsub.bind(this)
     }
-    // Subscribe to the relays.
+    // Submit the subscription to the relay pool.
     this._pool.subscribe(this.relays, filter, params)
   }
 
+  /**
+   * Connects the socket to a list of relays.
+   * @param relays  The list of relays to connect to.
+   * @returns       A promise to resolve when the connection is established.
+   */
   async connect (relays? : string[]) : Promise<void> {
     // Set the timeout.
     const timeout = this.config.sub_timeout * 1000
@@ -218,8 +223,7 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
 
   /**
    * Closes all relay connections.
-   * 
-   * @emits close  When all connections are terminated
+   * @emits closed  When all connections are terminated
    */
   async close () : Promise<void> {
     // If the client is ready,.
@@ -259,16 +263,18 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
    * @returns            The response message.
    */
   async request (
-    template  : Partial<RequestTemplate>,
+    message   : Partial<RequestTemplate>,
     recipient : string,
     relays?   : string[]
   ) : Promise<ResponseMessage> {
     // Set the timeout.
     const timeout = this.config.req_timeout * 1000
+    // Generate a message ID if not provided.
+    const id = message.id ?? gen_message_id()
     // Create the request template.
-    const config  = { ...template, id: template.id ?? gen_message_id() }
+    const config  = { ...message, id }
     // Create the request template.
-    const tmpl    = create_request_template(config)
+    const request = create_request_msg(config)
     // Create the promise to resolve the response.
     const receipt = new Promise<ResponseMessage>((resolve, reject) => {
       // Set the expiration timer.
@@ -276,7 +282,7 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
       // Wait for the response.
       this.within('response', (msg : ResponseMessage) => {
         // If the message ID matches the request ID,
-        if (msg.id === tmpl.id) {
+        if (msg.id === request.id) {
           // Clear the timeout and resolve the promise.
           clearTimeout(timer)
           resolve(msg)
@@ -284,55 +290,64 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
       }, timeout)
     })
     // Send the request.
-    this.send(tmpl, recipient, relays)
+    this.send(request, recipient, relays)
     // Return the promise to resolve the response.
     return receipt
   }
 
   /**
-   * Send a response to a request.
+   * Send an acceptance response to a request.
    * @param id       The message ID.
    * @param pubkey   The recipient's public key.
    * @param result   The result of the request.
    * @returns        The published event.
    */
   async accept (
-    id      : string,
-    pubkey  : string,
+    request : RequestMessage,
     result  : string,
     relays? : string[]
   ) : Promise<PublishReceipt> {
+    // Unpack the request message.
+    const { id, env } = request
     // Create the response template.
-    const tmpl = create_accept_template({ id, result })
+    const tmpl = create_accept_msg({ id, result })
     // Emit the accept event.
-    this.emit('accept', tmpl, pubkey)
+    this.emit('accept', tmpl, env.pubkey)
     // Send the response.
-    return this.send(tmpl, pubkey, relays)
+    return this.send(tmpl, env.pubkey, relays)
   }
 
   /**
-   * Send a rejection to a request.
+   * Send a rejection response to a request.
    * @param id       The message ID.
    * @param pubkey   The recipient's public key.
    * @param reason   The reason for the rejection.
    * @returns        The published event.
    */
   async reject (
-    id      : string,
-    pubkey  : string,
+    request : RequestMessage,
     reason  : string,
     relays? : string[]
   ) : Promise<PublishReceipt> {
+    // Unpack the request message.
+    const { id, env } = request
     // Create the rejection template.
-    const tmpl = create_reject_template({ id, error: reason })
+    const tmpl = create_reject_msg({ id, error: reason })
     // Emit the reject event.
-    this.emit('reject', tmpl, pubkey)
+    this.emit('reject', tmpl, env.pubkey)
     // Send the rejection.
-    return this.send(tmpl, pubkey, relays)
+    return this.send(tmpl, env.pubkey, relays)
   }
 
-  private async send (
-    template  : MessageTemplate,
+  /**
+   * Sends a message to a recipient.
+   * @param message    The message template.
+   * @param recipient  The recipient of the message.
+   * @param relays     The list of relays to send the message to.
+   * @returns          The published event.
+   */
+  async send (
+    message   : MessageTemplate,
     recipient : string,
     relays    : string[] = this.relays
   ) : Promise<PublishReceipt> {
@@ -341,7 +356,7 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
     // Subscribe to the relays if needed.
     await this.subscribe(relays)
     // Create the event.
-    const event = await this._notarize(template, recipient)
+    const event = await this._notarize(message, recipient)
     // Emit the event to the client emitter.
     this.emit('published', event)
     // Collect the publication promises.
@@ -364,13 +379,13 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
    * @returns       A promise to resolve with the subscription ID.
    */
   async subscribe (relays : string[] = []) : Promise<void> {
-    // If the client already has the relays and is ready, return.
+    // If the client is already subscribed to the relays, return.
     if (has_relays(this, relays) && this._ready) return
-    // Update the relays.
+    // Add the relays to the client list.
     relays.forEach(relay => this._relays.add(relay))
-    // Set the timeout.
+    // Set the timeout for the subscription.
     const timeout = this.config.sub_timeout * 1000
-    // Update the subscription.
+    // Subscribe to the relays.
     this._subscribe()
     // Return a promise to resolve when the subscription is established.
     return new Promise((resolve, reject) => {
@@ -387,6 +402,11 @@ export class NostrSocket extends EventEmitter <SocketEventMap> {
   }
 }
 
+/**
+ * Generates a subscription ID for a public key.
+ * @param pubkey  The public key to generate an ID for.
+ * @returns       The generated subscription ID.
+ */
 function get_sub_id (pubkey : string) : string {
   const tag_bytes = Buff.str(DOMAIN_TAG)
   const pk_bytes  = Buff.hex(pubkey)
@@ -412,6 +432,12 @@ function parse_receipts (
   return { acks, fails, ok: acks > 0 }
 }
 
+/**
+ * Checks if the client is missing any of the provided relays.
+ * @param client  The client to check.
+ * @param relays  The list of relays to check.
+ * @returns       True if the client has all the relays, false otherwise.
+ */
 function has_relays (client : NostrSocket, relays : string[] = []) : boolean {
   return relays.every(relay => client.relays.includes(relay))
 }
