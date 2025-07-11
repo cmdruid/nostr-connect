@@ -1,4 +1,5 @@
 // Shared types for request cards
+import type { UseRequestsResult } from '@/demo/hooks/useRequests.js'
 
 export interface SessionOrigin {
   name?: string
@@ -21,14 +22,9 @@ export interface PermRequest {
 export interface BaseCardProps {
   request: PermRequest
   isExpanded: boolean
-  onToggleExpanded: () => void
-  onApprove: (id: string) => void
-  onDeny: (id: string) => void
-  onApproveAll: () => void
-  onDenyAll: () => void
+  requests: UseRequestsResult
 }
 
 export interface NoteSignatureCardProps extends BaseCardProps {
-  onApproveAllKinds: (kind: number) => void
-  onDenyAllKinds: (kind: number) => void
+  // Inherits requests hook from BaseCardProps
 } 

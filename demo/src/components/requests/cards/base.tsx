@@ -1,31 +1,27 @@
 // Base request card component
 import { RequestCardHeader, RequestCardBody } from './shared.js'
 import type { BaseCardProps, PermRequest } from './types.js'
+import type { UseRequestsResult } from '@/demo/hooks/useRequests.js'
 
 function BaseRequestActions({ 
   request, 
-  onApprove, 
-  onDeny, 
-  onApproveAll, 
-  onDenyAll 
-}: {
+  requests 
+}: { 
   request: PermRequest
-  onApprove: (id: string) => void
-  onDeny: (id: string) => void
-  onApproveAll: () => void
-  onDenyAll: () => void
+  requests: UseRequestsResult 
 }) {
+  const { handleApprove, handleDeny, handleApproveAll, handleDenyAll } = requests
   return (
     <div className="request-actions">
       <div className="request-actions-primary">
         <button
-          onClick={() => onApprove(request.id)}
+          onClick={() => handleApprove(request.id)}
           className="request-btn request-btn-approve"
         >
           Approve
         </button>
         <button
-          onClick={() => onDeny(request.id)}
+          onClick={() => handleDeny(request.id)}
           className="request-btn request-btn-deny"
         >
           Deny
@@ -33,13 +29,13 @@ function BaseRequestActions({
       </div>
       <div className="request-actions-bulk">
         <button
-          onClick={onApproveAll}
+          onClick={handleApproveAll}
           className="request-btn request-btn-approve-all"
         >
           Approve All
         </button>
         <button
-          onClick={onDenyAll}
+          onClick={handleDenyAll}
           className="request-btn request-btn-deny-all"
         >
           Deny All
@@ -50,7 +46,7 @@ function BaseRequestActions({
 }
 
 export function BaseRequestCard(props: BaseCardProps) {
-  const { request } = props
+  const { request, requests } = props
 
   return (
     <div className="request-card">
@@ -60,14 +56,11 @@ export function BaseRequestCard(props: BaseCardProps) {
       <RequestCardBody 
         request={request} 
         isExpanded={props.isExpanded} 
-        onToggleExpanded={props.onToggleExpanded} 
+        onToggleExpanded={() => requests.toggleExpanded(request.id)} 
       />
       <BaseRequestActions 
         request={request}
-        onApprove={props.onApprove}
-        onDeny={props.onDeny}
-        onApproveAll={props.onApproveAll}
-        onDenyAll={props.onDenyAll}
+        requests={requests}
       />
     </div>
   )

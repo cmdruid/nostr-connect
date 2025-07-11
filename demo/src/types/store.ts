@@ -5,4 +5,5 @@ export interface AppStore {
   encrypted : string | null
   relays    : RelayPolicy[]
   sessions  : SignerSession[]
+  notificationsEnabled : boolean
 }

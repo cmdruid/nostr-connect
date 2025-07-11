@@ -9,5 +9,6 @@ export const STORE_KEY = 'nip46-demo'
 export const DEFAULT_STORE : AppStore = {
   encrypted : null,
   relays    : [],
-  sessions  : []
+  sessions  : [],
+  notificationsEnabled : false
 }

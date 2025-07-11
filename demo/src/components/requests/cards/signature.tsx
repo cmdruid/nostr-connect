@@ -1,24 +1,16 @@
 // Note signature request card component
 import { RequestCardHeader, RequestCardBody } from './shared.js'
 import type { NoteSignatureCardProps, PermRequest } from './types.js'
+import type { UseRequestsResult } from '@/demo/hooks/useRequests.js'
 
 function NoteSignatureActions({ 
   request, 
-  onApprove, 
-  onDeny, 
-  onApproveAll, 
-  onDenyAll,
-  onApproveAllKinds,
-  onDenyAllKinds
+  requests
 }: {
   request: PermRequest
-  onApprove: (id: string) => void
-  onDeny: (id: string) => void
-  onApproveAll: () => void
-  onDenyAll: () => void
-  onApproveAllKinds: (kind: number) => void
-  onDenyAllKinds: (kind: number) => void
+  requests: UseRequestsResult
 }) {
+  const { handleApprove, handleDeny, handleApproveAll, handleDenyAll, handleApproveAllKinds, handleDenyAllKinds } = requests
   // Extract event kind from content if available
   const getEventKind = (): number | null => {
     try {
@@ -43,13 +35,13 @@ function NoteSignatureActions({
     <div className="request-actions">
       <div className="request-actions-primary">
         <button
-          onClick={() => onApprove(request.id)}
+          onClick={() => handleApprove(request.id)}
           className="request-btn request-btn-approve"
         >
           Approve
         </button>
         <button
-          onClick={() => onDeny(request.id)}
+          onClick={() => handleDeny(request.id)}
           className="request-btn request-btn-deny"
         >
           Deny
@@ -57,13 +49,13 @@ function NoteSignatureActions({
       </div>
       <div className="request-actions-bulk">
         <button
-          onClick={onApproveAll}
+          onClick={handleApproveAll}
           className="request-btn request-btn-approve-all"
         >
           Approve All
         </button>
         <button
-          onClick={onDenyAll}
+          onClick={handleDenyAll}
           className="request-btn request-btn-deny-all"
         >
           Deny All
@@ -72,13 +64,13 @@ function NoteSignatureActions({
       {eventKind !== null && (
         <div className="request-actions-kinds">
           <button
-            onClick={() => onApproveAllKinds(eventKind)}
+            onClick={() => handleApproveAllKinds(eventKind)}
             className="request-btn request-btn-approve-kinds"
           >
             Approve All Kind {eventKind}
           </button>
           <button
-            onClick={() => onDenyAllKinds(eventKind)}
+            onClick={() => handleDenyAllKinds(eventKind)}
             className="request-btn request-btn-deny-kinds"
           >
             Deny All Kind {eventKind}
@@ -90,7 +82,7 @@ function NoteSignatureActions({
 }
 
 export function NoteSignatureRequestCard(props: NoteSignatureCardProps) {
-  const { request } = props
+  const { request, requests } = props
 
   return (
     <div className="request-card request-card-signature">
@@ -100,16 +92,11 @@ export function NoteSignatureRequestCard(props: NoteSignatureCardProps) {
       <RequestCardBody 
         request={request} 
         isExpanded={props.isExpanded} 
-        onToggleExpanded={props.onToggleExpanded} 
+        onToggleExpanded={() => requests.toggleExpanded(request.id)} 
       />
       <NoteSignatureActions 
         request={request}
-        onApprove={props.onApprove}
-        onDeny={props.onDeny}
-        onApproveAll={props.onApproveAll}
-        onDenyAll={props.onDenyAll}
-        onApproveAllKinds={props.onApproveAllKinds}
-        onDenyAllKinds={props.onDenyAllKinds}
+        requests={requests}
       />
     </div>
   )

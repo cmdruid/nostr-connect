@@ -5,6 +5,7 @@ import { PermissionPolicy, SignerSession } from '@/types/index.js'
 import { InviteEncoder } from '@/index.js'
 import { useClientCtx }  from '@/demo/context/client.js'
 import { PermissionsDropdown } from './permissions.js'
+import { QRScanner } from '@/demo/components/util/scanner.js'
 
 export function SessionsView () {
   const ctx = useClientCtx()
@@ -17,6 +18,7 @@ export function SessionsView () {
   const [editingPermissions, setEditingPermissions] = useState<Record<string, PermissionPolicy>>({})
   const [newEventKind, setNewEventKind] = useState<Record<string, string>>({})
   const [copiedPubkey, setCopiedPubkey] = useState<string | null>(null)
+  const [isScanning, setIsScanning] = useState<boolean>(false)
 
   // Update sessions when they change
   useEffect(() => {
@@ -265,7 +267,7 @@ export function SessionsView () {
 
       {/* Register Session */}
       <div className="sessions-section">
-        <div className="session-card-row">
+        <div className="session-input-row">
           <input
             type="text"
             value={connectString}
@@ -274,13 +276,48 @@ export function SessionsView () {
             className="session-input"
           />
           <button
-            onClick={handleActivateSession}
-            className="session-btn-primary"
+            onClick={() => setIsScanning(true)}
+            className="qr-scan-btn"
+            disabled={isScanning}
+            title="Scan QR Code"
           >
-            Connect
+            <img 
+              src="/qrcode.png" 
+              alt="QR Code" 
+              className="qr-icon"
+            />
           </button>
         </div>
+        <button
+          onClick={handleActivateSession}
+          className="session-btn-primary"
+        >
+          Connect
+        </button>
         {error && <p className="session-error">{error}</p>}
+        
+        {isScanning && (
+          <div className="scanner-modal">
+            <div className="scanner-overlay" onClick={() => setIsScanning(false)} />
+            <div className="scanner-container-modal">
+              <QRScanner
+                onResult={(result: string) => {
+                  setConnectString(result.trim())
+                  setIsScanning(false)
+                }}
+                onError={(error: Error) => {
+                  console.error('QR scan error:', error)
+                }}
+              />
+              <div className="qr-reticule">
+                <div className="qr-corner qr-corner-tl"></div>
+                <div className="qr-corner qr-corner-tr"></div>
+                <div className="qr-corner qr-corner-bl"></div>
+                <div className="qr-corner qr-corner-br"></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,189 +1,15 @@
-import { useState, useEffect } from 'react'
 import { useClientCtx } from '@/demo/context/client.js'
+import { useRequests } from '@/demo/hooks/useRequests.js'
 
 import {
   BaseRequestCard,
   NoteSignatureRequestCard
 } from './cards/index.js'
 
-import type { PermissionRequest, PermissionPolicy } from '@/types/index.js'
-
-// Enhanced request interface for UI
-interface EnhancedPermRequest {
-  id: string
-  method: string
-  source: string
-  content?: unknown
-  timestamp: number
-  session_origin?: {
-    name?: string
-    image?: string
-    pubkey: string
-    url?: string
-  }
-  request_type: 'base' | 'note_signature'
-  status: 'pending' | 'approved' | 'denied'
-}
-
-// Transform PermissionRequest to EnhancedPermRequest for UI
-function transformRequest(req: PermissionRequest): EnhancedPermRequest {
-  const request_type = req.method === 'sign_event' ? 'note_signature' : 'base'
-  
-  // Extract content from params
-  let content: unknown = undefined
-  if (req.params && req.params.length > 0) {
-    if (req.method === 'sign_event') {
-      try {
-        content = JSON.parse(req.params[0])
-      } catch {
-        content = req.params[0]
-      }
-    } else {
-      content = { params: req.params }
-    }
-  }
-
-  // Extract session origin from session profile
-  const session_origin = {
-    name: req.session.profile?.name,
-    image: req.session.profile?.image,
-    pubkey: req.session.pubkey,
-    url: req.session.profile?.url
-  }
-
-  return {
-    id: req.id,
-    method: req.method,
-    source: req.session.profile?.name || 'Unknown App',
-    content,
-    timestamp: req.stamp,
-    session_origin,
-    request_type,
-    status: 'pending'
-  }
-}
-
 export function RequestsView() {
   const ctx = useClientCtx()
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [pendingRequests, setPendingRequests] = useState<EnhancedPermRequest[]>([])
-
-  // Update requests when they change
-  useEffect(() => {
-    const updateRequests = () => {
-      // Add null check for ctx.client and ctx.client.request
-      if (!ctx.client || !ctx.client.request) {
-        setPendingRequests([])
-        return
-      }
-      
-      const rawRequests = ctx.client.request.queue || []
-      setPendingRequests(rawRequests.map(transformRequest))
-    }
-
-    // Initial update
-    updateRequests()
-
-    // Listen for request changes only if client and request exist
-    if (ctx.client && ctx.client.request) {
-      ctx.client.request.on('prompt',  updateRequests)
-      ctx.client.request.on('approve', updateRequests)
-      ctx.client.request.on('deny',    updateRequests)
-
-      return () => {
-        // Add null check in cleanup too
-        if (ctx.client && ctx.client.request) {
-          ctx.client.request.off('prompt',  updateRequests)
-          ctx.client.request.off('approve', updateRequests)
-          ctx.client.request.off('deny',    updateRequests)
-        }
-      }
-    }
-  }, [ctx.client])
-
-  const toggleExpanded = (requestId: string) => {
-    const newExpanded = new Set(expanded)
-    if (newExpanded.has(requestId)) {
-      newExpanded.delete(requestId)
-    } else {
-      newExpanded.add(requestId)
-    }
-    setExpanded(newExpanded)
-  }
-
-  const handleApprove = (requestId: string) => {
-    if (!ctx.client || !ctx.client.request) return
-    const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
-    if (request) {
-      ctx.client.request.approve(request)
-    }
-  }
-
-  const handleDeny = (requestId: string) => {
-    if (!ctx.client || !ctx.client.request) return
-    const request = ctx.client.request.queue.find((req: PermissionRequest) => req.id === requestId)
-    if (request) {
-      ctx.client.request.deny(request, 'denied by user')
-    }
-  }
-
-  const handleApproveAll = () => {
-    if (!ctx.client || !ctx.client.request) return
-    ctx.client.request.queue.forEach((request: PermissionRequest) => {
-      ctx.client.request.approve(request)
-    })
-  }
-
-  const handleDenyAll = () => {
-    if (!ctx.client || !ctx.client.request) return
-    ctx.client.request.queue.forEach((request: PermissionRequest) => {
-      ctx.client.request.deny(request, 'denied by user')
-    })
-  }
-
-  const handleApproveAllKinds = (kind: number) => {
-    if (!ctx.client || !ctx.client.request) return
-    ctx.client.request.queue
-      .filter((req: PermissionRequest) => {
-        if (req.method === 'sign_event' && req.params?.[0]) {
-          try {
-            const event = JSON.parse(req.params[0])
-            return event.kind === kind
-          } catch {
-            return false
-          }
-        }
-        return false
-      })
-      .forEach((request: PermissionRequest) => {
-        const policyChanges: Partial<PermissionPolicy> = {
-          kinds: { [kind]: true }
-        }
-        ctx.client.request.approve(request, policyChanges)
-      })
-  }
-
-  const handleDenyAllKinds = (kind: number) => {
-    if (!ctx.client || !ctx.client.request) return
-    ctx.client.request.queue
-      .filter((req: PermissionRequest) => {
-        if (req.method === 'sign_event' && req.params?.[0]) {
-          try {
-            const event = JSON.parse(req.params[0])
-            return event.kind === kind
-          } catch {
-            return false
-          }
-        }
-        return false
-      })
-      .forEach((request: PermissionRequest) => {
-        const policyChanges: Partial<PermissionPolicy> = {
-          kinds: { [kind]: false }
-        }
-        ctx.client.request.deny(request, 'denied by user', policyChanges)
-      })
-  }
+  const requestsHook = useRequests()
+  const { pendingRequests, expanded, isLoading, notificationEnabled } = requestsHook
 
   // Show locked state if client is locked
   if (ctx.status === 'locked') {
@@ -196,7 +22,7 @@ export function RequestsView() {
   }
 
   // Show loading state if client is null but not locked
-  if (!ctx.client) {
+  if (isLoading) {
     return (
       <div className="requests-container">
         <h2 className="section-header">Permission Requests</h2>
@@ -208,6 +34,20 @@ export function RequestsView() {
   return (
     <div className="requests-container">
       <h2 className="section-header">Permission Requests</h2>
+      
+      {/* Show notification status */}
+      {notificationEnabled && (
+        <div style={{ 
+          backgroundColor: '#4CAF50', 
+          color: '#fff', 
+          padding: '8px 12px', 
+          borderRadius: '4px', 
+          marginBottom: '10px',
+          fontSize: '14px'
+        }}>
+          🔔 Notifications enabled - you'll be notified of new requests
+        </div>
+      )}
       
       {/* Show offline warning if client is offline */}
       {ctx.status === 'offline' && (
@@ -237,13 +77,7 @@ export function RequestsView() {
                     key={request.id}
                     request={request}
                     isExpanded={isExpanded}
-                    onToggleExpanded={() => toggleExpanded(request.id)}
-                    onApprove={handleApprove}
-                    onDeny={handleDeny}
-                    onApproveAll={handleApproveAll}
-                    onDenyAll={handleDenyAll}
-                    onApproveAllKinds={handleApproveAllKinds}
-                    onDenyAllKinds={handleDenyAllKinds}
+                    requests={requestsHook}
                   />
                 )
               } else {
@@ -252,11 +86,7 @@ export function RequestsView() {
                     key={request.id}
                     request={request}
                     isExpanded={isExpanded}
-                    onToggleExpanded={() => toggleExpanded(request.id)}
-                    onApprove={handleApprove}
-                    onDeny={handleDeny}
-                    onApproveAll={handleApproveAll}
-                    onDenyAll={handleDenyAll}
+                    requests={requestsHook}
                   />
                 )
               }
