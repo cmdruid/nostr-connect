@@ -35,6 +35,10 @@ export class RequestQueue extends EventEmitter<RequestEventMap> {
     return Array.from(this._queue.values())
   }
 
+  get timeout () : number {
+    return this._timeout
+  }
+
   handler (req : PermissionRequest) {
     // Try to handle the permission request.
     try {
