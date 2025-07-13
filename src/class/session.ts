@@ -212,17 +212,14 @@ export class SessionManager extends EventEmitter<SessionEventMap> {
    * @param pubkey - The pubkey of the session to revoke.
    */
   revoke (pubkey : string) {
-    // Delete any pending session tokens.
-    const is_pending = this._pending.delete(pubkey)
-    // Delete any active session tokens.
-    const is_active  = this._active.delete(pubkey)
-    // If there was a pending session, delete the timer.
-    if (is_pending)    this._timers.delete(pubkey)
-    // If there was a pending or active session,
-    if (is_pending || is_active) {
-      // Emit the revoked event.
-      this.emit('revoked', pubkey)
-    }
+    // Delete the pending session token.
+    this._pending.delete(pubkey)
+    // Delete the active session token.
+    this._active.delete(pubkey)
+    // Delete the timer.
+    this._timers.delete(pubkey)
+    // Emit the revoked event.
+    this.emit('revoked', pubkey)
   }
 
   /**
