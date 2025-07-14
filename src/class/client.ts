@@ -67,8 +67,12 @@ export class SignerClient extends EventEmitter<ClientEventMap> {
   }
 
   async connect (relays? : string[]) {
+    // Get the session relays.
+    const session_relays = this.session.active.flatMap(s => s.relays)
+    // If there are session relays, add them to the list.
+    const unique_relays  = Array.from(new Set([ ...session_relays, ...(relays ?? []) ]))
     // Connect to the relays.
-    await this._socket.connect(relays)
+    await this._socket.connect(unique_relays)
     // Emit the ready event.
     this.emit('ready')
   }
